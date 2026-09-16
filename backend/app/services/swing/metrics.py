@@ -106,3 +106,39 @@ def x_factor(shoulder_deg: float, hip_deg: float) -> float:
     실제로 일어나는 일이므로 0으로 깎지 않는다.
     """
     return shoulder_deg - hip_deg
+
+
+# ── 자세 지표 ──────────────────────────────────────────────────────────────
+def knee_flex(world: np.ndarray, addr_i: int) -> float:
+    """어드레스에서의 무릎 굴곡각(도), 좌우 평균. 곧게 펴면 0.
+
+    힙-무릎-발목 사이각의 여각이다. 한쪽이라도 계산 불가면 NaN.
+    """
+    frame = world[addr_i]
+    left = angle_at(frame[L_HIP], frame[L_KNEE], frame[L_ANKLE])
+    right = angle_at(frame[R_HIP], frame[R_KNEE], frame[R_ANKLE])
+    if math.isnan(left) or math.isnan(right):
+        return math.nan
+    return ((180.0 - left) + (180.0 - right)) / 2.0
+
+
+def spine_angle(world: np.ndarray, addr_i: int) -> float:
+    """어드레스에서 척추가 수직 대비 앞으로 기운 각도(도).
+
+    MediaPipe world 좌표는 y축 아래가 양수라 어깨는 힙보다 y가 작다.
+    부호에 의존하지 않도록 수직 성분은 절댓값으로 쓴다.
+    """
+    frame = world[addr_i]
+    shoulder_c = (
+        np.asarray(frame[L_SHOULDER], dtype=np.float64)
+        + np.asarray(frame[R_SHOULDER], dtype=np.float64)
+    ) / 2.0
+    hip_c = (
+        np.asarray(frame[L_HIP], dtype=np.float64)
+        + np.asarray(frame[R_HIP], dtype=np.float64)
+    ) / 2.0
+    v = shoulder_c - hip_c
+    if float(np.linalg.norm(v)) < 1e-9:
+        return math.nan
+    horizontal = math.hypot(float(v[0]), float(v[2]))
+    return math.degrees(math.atan2(horizontal, abs(float(v[1]))))
