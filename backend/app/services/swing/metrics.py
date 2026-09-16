@@ -58,3 +58,51 @@ def angle_at(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
         return math.nan
     cos = float(np.dot(v1, v2)) / (n1 * n2)
     return math.degrees(math.acos(max(-1.0, min(1.0, cos))))
+
+
+# ── 회전 지표 ──────────────────────────────────────────────────────────────
+def _is_degenerate_pair(frame: np.ndarray, idx_left: int, idx_right: int) -> bool:
+    """좌우 랜드마크가 사실상 겹쳐 방향을 정의할 수 없는가."""
+    v = np.asarray(frame[idx_right], dtype=np.float64) - np.asarray(
+        frame[idx_left], dtype=np.float64
+    )
+    return float(math.hypot(v[0], v[2])) < 1e-9
+
+
+def rotation_between(
+    world_ref: np.ndarray,
+    world_target: np.ndarray,
+    idx_left: int,
+    idx_right: int,
+) -> float:
+    """기준 프레임 대비 목표 프레임의 수평 회전량(도), 0~180.
+
+    좌타·우타에 따라 부호가 반대이므로 크기만 돌려준다.
+    방향을 정의할 수 없으면 NaN.
+    """
+    if _is_degenerate_pair(world_ref, idx_left, idx_right) or _is_degenerate_pair(
+        world_target, idx_left, idx_right
+    ):
+        return math.nan
+    a0 = horizontal_angle(world_ref[idx_left], world_ref[idx_right])
+    a1 = horizontal_angle(world_target[idx_left], world_target[idx_right])
+    return abs(wrap_deg(a1 - a0))
+
+
+def shoulder_rotation(world: np.ndarray, addr_i: int, top_i: int) -> float:
+    """어드레스 대비 탑에서의 어깨 회전량(도)."""
+    return rotation_between(world[addr_i], world[top_i], L_SHOULDER, R_SHOULDER)
+
+
+def hip_rotation(world: np.ndarray, addr_i: int, top_i: int) -> float:
+    """어드레스 대비 탑에서의 힙 회전량(도)."""
+    return rotation_between(world[addr_i], world[top_i], L_HIP, R_HIP)
+
+
+def x_factor(shoulder_deg: float, hip_deg: float) -> float:
+    """어깨와 힙 회전의 차이. 골프에서 비거리를 결정하는 핵심 지표.
+
+    힙이 어깨보다 더 돌아간 비정상 스윙에서는 음수가 나온다.
+    실제로 일어나는 일이므로 0으로 깎지 않는다.
+    """
+    return shoulder_deg - hip_deg
