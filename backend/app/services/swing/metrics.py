@@ -142,3 +142,46 @@ def spine_angle(world: np.ndarray, addr_i: int) -> float:
         return math.nan
     horizontal = math.hypot(float(v[0]), float(v[2]))
     return math.degrees(math.atan2(horizontal, abs(float(v[1]))))
+
+
+# ── 2D 픽셀 지표 ──────────────────────────────────────────────────────────
+# world 좌표는 힙 중심이 원점이라 몸 전체의 공간 이동이 상쇄된다.
+# 아래 두 지표는 그래서 픽셀 좌표를 쓴다.
+def head_movement_cm(xy_px: np.ndarray, addr_i: int, impact_i: int) -> float:
+    """어드레스~임팩트 구간에서 머리가 움직인 최대 거리(cm).
+
+    어드레스 프레임의 어깨 너비 픽셀을 SHOULDER_WIDTH_CM 에 대응시켜 환산한다.
+    기준자를 만들 수 없으면 NaN.
+    """
+    addr = xy_px[addr_i]
+    shoulder_px = float(
+        np.linalg.norm(
+            np.asarray(addr[R_SHOULDER], dtype=np.float64)
+            - np.asarray(addr[L_SHOULDER], dtype=np.float64)
+        )
+    )
+    if shoulder_px < 1e-6:
+        return math.nan
+
+    lo, hi = min(addr_i, impact_i), max(addr_i, impact_i)
+    segment = np.asarray(xy_px[lo : hi + 1, NOSE], dtype=np.float64)
+    displacement = float(np.linalg.norm(segment - segment[0], axis=1).max())
+    return displacement * (SHOULDER_WIDTH_CM / shoulder_px)
+
+
+def weight_shift_pct(xy_px: np.ndarray, addr_i: int, impact_i: int) -> float:
+    """골반 중심의 좌우 이동량을 스탠스 폭 대비 %로 나타낸 대리 지표.
+
+    영상만으로 실제 체중 배분은 측정할 수 없다. 이것은 추정치이며
+    화면에도 그렇게 표시해야 한다.
+    스탠스 폭이 0이면 NaN.
+    """
+    addr = xy_px[addr_i]
+    impact = xy_px[impact_i]
+    stance_px = abs(float(addr[L_ANKLE][0]) - float(addr[R_ANKLE][0]))
+    if stance_px < 1e-6:
+        return math.nan
+
+    pelvis_addr = (float(addr[L_HIP][0]) + float(addr[R_HIP][0])) / 2.0
+    pelvis_impact = (float(impact[L_HIP][0]) + float(impact[R_HIP][0])) / 2.0
+    return abs(pelvis_impact - pelvis_addr) / stance_px * 100.0
