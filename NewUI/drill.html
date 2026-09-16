@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · 드릴 상세 (Hi-Fi)</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/hifi.css">
+<style>
+  /* ---- Drill specific ---- */
+  .drill-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 20px;
+  }
+
+  /* Hero video card */
+  .drill-hero {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .drill-video {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background:
+      radial-gradient(ellipse at 50% 60%, #1a2434 0%, #0a0e14 70%, #050810 100%);
+    overflow: hidden;
+  }
+  .drill-video-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .drill-pose {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-2);
+    width: 220px; height: 280px;
+  }
+  .drill-pose svg { width: 100%; height: 100%; }
+  .drill-pose svg path, .drill-pose svg line { stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .drill-pose svg circle { fill: currentColor; }
+
+  .drill-overlay-tl {
+    position: absolute; top: 16px; left: 16px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .drill-overlay-tr {
+    position: absolute; top: 16px; right: 16px;
+    display: flex; gap: 8px;
+  }
+  .drill-overlay-br {
+    position: absolute; bottom: 16px; right: 16px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .drill-overlay-bl {
+    position: absolute; bottom: 16px; left: 16px;
+  }
+  .ov-chip {
+    padding: 6px 12px;
+    background: rgba(10,12,16,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text-2);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .ov-chip.hot {
+    color: var(--accent);
+    border-color: rgba(212,255,58,0.4);
+  }
+  .ov-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .play-big {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: rgba(212,255,58,0.95);
+    color: #0a0c10;
+    border: none;
+    display: grid; place-items: center;
+    cursor: pointer;
+    box-shadow: 0 12px 40px rgba(212,255,58,0.3);
+    z-index: 4;
+  }
+
+  .drill-controls {
+    padding: 14px 18px;
+    background: var(--bg-2);
+    border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .play-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: #0a0c10;
+    flex-shrink: 0;
+  }
+  .speed-toggle {
+    display: flex; gap: 2px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .speed-toggle button {
+    background: transparent; border: none;
+    padding: 4px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-3);
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .speed-toggle button.on {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+  .scrubber {
+    flex: 1; position: relative; height: 28px;
+  }
+  .scrub-bar {
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    transform: translateY(-50%);
+    height: 4px;
+    background: var(--bg-4);
+    border-radius: 2px;
+  }
+  .scrub-progress {
+    position: absolute;
+    left: 0; top: 0; height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 35%;
+  }
+  .scrub-handle {
+    position: absolute;
+    left: 35%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(212,255,58,0.2);
+  }
+  .scrub-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    font-feature-settings: 'tnum';
+    flex-shrink: 0;
+    min-width: 90px;
+    text-align: right;
+  }
+
+  /* Drill title block */
+  .drill-meta-row {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .drill-tag-row {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .drill-title {
+    font-size: 28px; font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px;
+  }
+  .drill-title .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .drill-by {
+    font-size: 13px; color: var(--text-2);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .coach-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .coach-avatar {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d4ff3a, #5aa9ff);
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700;
+    color: #0a0c10;
+  }
+
+  .drill-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 20px 24px;
+  }
+  .ds-cell {
+    border-right: 1px solid var(--line);
+    padding-right: 20px;
+  }
+  .ds-cell:last-child { border-right: none; padding-right: 0; }
+  .ds-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .ds-val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1;
+  }
+  .ds-val .unit {
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 12px;
+    color: var(--text-3);
+    margin-left: 4px;
+    font-weight: 500;
+  }
+
+  /* Steps */
+  .step-list {
+    display: flex; flex-direction: column;
+    gap: 0;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 16px;
+    padding: 18px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .step:last-child { border-bottom: none; padding-bottom: 0; }
+  .step:first-child { padding-top: 0; }
+  .step-num {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 32px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .step-content h4 {
+    font-size: 15px; font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .step-content p {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.55;
+    margin: 0 0 10px;
+  }
+  .step-tip {
+    background: var(--accent-dim);
+    border-left: 2px solid var(--accent);
+    padding: 8px 12px;
+    border-radius: 0 8px 8px 0;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .step-tip strong { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+  .step-warn {
+    background: var(--danger-dim);
+    border-left: 2px solid var(--danger);
+    padding: 8px 12px;
+    border-radius: 0 8px 8px 0;
+    font-size: 12px;
+    color: var(--text);
+    margin-top: 8px;
+  }
+  .step-warn strong { color: var(--danger); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+
+  /* Sidebar widgets */
+  .target-card {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .target-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .target-row:last-child { border-bottom: none; }
+  .target-name { font-size: 13px; color: var(--text-2); }
+  .target-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+
+  /* Progress card */
+  .progress-card-mini {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .week-cell {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    background: var(--bg-4);
+    display: grid; place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    position: relative;
+  }
+  .week-cell.done {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+  .week-cell.today {
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+  }
+  .week-cell.miss {
+    background: var(--bg-3);
+    border: 1px dashed var(--line-2);
+  }
+
+  /* Related drills */
+  .related {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .related-row {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .related-row:hover {
+    border-color: var(--line-3);
+    background: var(--bg-4);
+  }
+  .related-thumb {
+    width: 56px; height: 56px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #1a2434 0%, #0a0e14 100%);
+    display: grid; place-items: center;
+    color: var(--text-2);
+    flex-shrink: 0;
+  }
+  .related-thumb svg { width: 38px; height: 50px; }
+  .related-thumb svg path, .related-thumb svg line { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .related-thumb svg circle { fill: currentColor; }
+  .related-name {
+    font-size: 13px; font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .related-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+  }
+  .related-difficulty {
+    display: flex; gap: 2px;
+  }
+  .diff-dot {
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .diff-dot.off { background: var(--bg-5); }
+
+  /* Equipment */
+  .equip-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .equip-item {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .equip-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--bg-4);
+    display: grid; place-items: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .equip-name {
+    font-size: 12px; font-weight: 600;
+    line-height: 1.2;
+  }
+  .equip-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  /* CTA bar */
+  .cta-bar {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, transparent, var(--bg) 30%, var(--bg) 100%);
+    padding: 24px 0 0;
+    margin-top: 32px;
+    display: flex; gap: 12px; align-items: center;
+    z-index: 5;
+  }
+  .cta-spacer { flex: 1; }
+  .cta-meta {
+    display: flex; gap: 18px;
+    color: var(--text-2);
+    font-size: 13px;
+  }
+  .cta-meta strong { color: var(--text); }
+
+  /* Section divider */
+  .section-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 32px 0 18px;
+  }
+  .section-divider .line {
+    flex: 1; height: 1px; background: var(--line);
+  }
+  .section-divider h2 {
+    font-size: 18px; font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  .section-divider h2 .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .section-divider .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+  }
+
+  /* Why it works callout */
+  .why-card {
+    background: linear-gradient(135deg, rgba(212,255,58,0.06), rgba(90,169,255,0.04));
+    border: 1px solid rgba(212,255,58,0.2);
+    border-radius: 16px;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 20px;
+    align-items: center;
+  }
+  .why-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: var(--accent);
+    color: #0a0c10;
+    display: grid; place-items: center;
+  }
+  .why-text h3 {
+    margin: 0 0 6px;
+    font-size: 16px; font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .why-text p {
+    margin: 0;
+    color: var(--text-2);
+    line-height: 1.55;
+    font-size: 13px;
+  }
+  .why-text .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Reviews */
+  .review {
+    padding: 14px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .review:last-child { border-bottom: none; padding-bottom: 0; }
+  .review-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .review-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--bg-4);
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    color: var(--text-2);
+  }
+  .review-name { font-size: 12px; font-weight: 600; }
+  .review-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); }
+  .stars { color: var(--accent); font-size: 11px; letter-spacing: 1px; }
+  .review-body {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <aside class="sidebar" data-hifi-sidebar="drill"></aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div class="crumb">
+        <a href="index.html">와이어프레임</a>
+        <span class="sep">/</span>
+        <a href="detail.html">상세 진단</a>
+        <span class="sep">/</span>
+        <span class="now">드릴 · 템포 게이트</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn icon" title="북마크">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="btn icon" title="공유">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke-linecap="round"/></svg>
+        </button>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          코치에게 질문
+        </button>
+        <button class="btn primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+          이 드릴 시작
+        </button>
+      </div>
+    </div>
+
+    <div class="header-block">
+      <div>
+        <div class="session-meta">DRILL #DR-014 · 템포 / 리듬 · 처방 기반</div>
+        <h1 class="h1">템포 <span class="em">게이트</span> 드릴</h1>
+        <div style="margin-top:10px; color: var(--text-2); font-size:14px; max-width: 680px; line-height: 1.5;">
+          백스윙과 다운스윙의 비율이 무너졌을 때 — 메트로놈과 두 박자 호흡으로 <span class="serif" style="color:var(--accent)">3 : 1</span> 리듬을 몸에 새기는 처방입니다.
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="h-stat">
+          <div class="val hi">12<span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-3); margin-left:4px; font-style:normal;">min</span></div>
+          <div class="lbl">권장 시간</div>
+        </div>
+        <div class="h-stat">
+          <div class="val">5<span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-3); margin-left:4px; font-style:normal;">step</span></div>
+          <div class="lbl">단계</div>
+        </div>
+        <div class="h-stat">
+          <div class="val">4.8<span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-3); margin-left:4px; font-style:normal;">/5</span></div>
+          <div class="lbl">평점 · 312</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============= MAIN GRID ============= -->
+    <div class="drill-grid">
+
+      <!-- LEFT -->
+      <div>
+
+        <!-- Hero video -->
+        <div class="drill-hero">
+          <div class="drill-video">
+            <div class="drill-video-grid"></div>
+
+            <div class="drill-overlay-tl">
+              <div class="ov-chip hot"><span class="ov-dot"></span>DEMO · COACH JIN</div>
+              <div class="ov-chip">15초 · 8.4MB</div>
+            </div>
+            <div class="drill-overlay-tr">
+              <div class="ov-chip">HD · 60FPS</div>
+            </div>
+
+            <!-- pose silhouette -->
+            <div class="drill-pose">
+              <svg viewBox="0 0 220 280">
+                <!-- head -->
+                <circle cx="100" cy="34" r="14"/>
+                <!-- spine -->
+                <line x1="100" y1="48" x2="106" y2="160"/>
+                <!-- shoulders -->
+                <line x1="74" y1="72" x2="138" y2="64"/>
+                <!-- back arm (top of backswing) -->
+                <line x1="138" y1="64" x2="170" y2="20"/>
+                <line x1="170" y1="20" x2="200" y2="40"/>
+                <!-- front arm crossing -->
+                <line x1="74" y1="72" x2="120" y2="30"/>
+                <line x1="120" y1="30" x2="180" y2="32"/>
+                <!-- hips -->
+                <line x1="84" y1="160" x2="128" y2="160"/>
+                <!-- legs -->
+                <line x1="84" y1="160" x2="76" y2="244"/>
+                <line x1="128" y1="160" x2="138" y2="248"/>
+                <!-- feet -->
+                <line x1="60" y1="248" x2="92" y2="248"/>
+                <line x1="124" y1="252" x2="156" y2="252"/>
+                <!-- club shaft -->
+                <line x1="180" y1="32" x2="60" y2="120" stroke-dasharray="4 4"/>
+                <!-- tempo arc -->
+                <path d="M 50 100 Q 110 -10 200 60" stroke="#d4ff3a" opacity="0.6" stroke-dasharray="3 5"/>
+              </svg>
+            </div>
+
+            <button class="play-big">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+            </button>
+
+            <div class="drill-overlay-bl">
+              <div class="ov-chip">템포 비율 <span style="color:var(--accent); margin-left:4px">3 : 1</span></div>
+            </div>
+            <div class="drill-overlay-br">
+              <div class="ov-chip">⚙ 1.0×</div>
+              <div class="ov-chip">메트로놈 ON</div>
+            </div>
+          </div>
+
+          <!-- meta row -->
+          <div class="drill-meta-row">
+            <div class="drill-tag-row">
+              <span class="chip accent mono">처방 매치 95%</span>
+              <span class="chip mono">템포</span>
+              <span class="chip mono">하체 안정</span>
+              <span class="chip mono">초/중급</span>
+            </div>
+            <h2 class="drill-title">메트로놈 <span class="em">3 : 1</span> 리듬 잡기</h2>
+            <div class="drill-by">
+              <span class="coach-pill">
+                <span class="coach-avatar">JI</span>
+                코치 김진영 · KPGA 티칭프로
+              </span>
+              <span style="color: var(--text-3)">·</span>
+              <span style="color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: 11px;">UPDATED 2024.11.08</span>
+            </div>
+          </div>
+
+          <!-- stats row -->
+          <div class="drill-stats-row">
+            <div class="ds-cell">
+              <div class="ds-lbl">난이도</div>
+              <div class="ds-val">2<span class="unit">/ 5</span></div>
+            </div>
+            <div class="ds-cell">
+              <div class="ds-lbl">반복 권장</div>
+              <div class="ds-val">3<span class="unit">세트 × 10회</span></div>
+            </div>
+            <div class="ds-cell">
+              <div class="ds-lbl">예상 효과</div>
+              <div class="ds-val" style="color:var(--accent)">+8<span class="unit">점 · 2주</span></div>
+            </div>
+            <div class="ds-cell">
+              <div class="ds-lbl">완료율</div>
+              <div class="ds-val">87<span class="unit">%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Why it works -->
+        <div class="section-divider">
+          <span class="num">[ 01 ]</span>
+          <h2>왜 이 드릴이 <span class="em">처방</span>되었나요</h2>
+          <div class="line"></div>
+        </div>
+
+        <div class="why-card">
+          <div class="why-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 15.5c-1.6.6-3.4 1-5.2 1-1.4 0-2.7-.2-4-.7-2.5 1.5-5 3.7-5 7.2"/><path d="M3 16c0-3.5 3-6 6.5-6S16 12.5 16 16"/><circle cx="12" cy="6" r="3"/></svg>
+          </div>
+          <div class="why-text">
+            <h3>당신의 템포 비율은 <span class="em">2.4 : 1</span> — 목표 3 : 1보다 빠릅니다</h3>
+            <p>지난 5세션 분석 결과, 백스윙이 평균 0.62초로 짧고 다운스윙은 0.26초로 급합니다. 임팩트 직전 회전이 완성되지 않아 페이스가 열린 채 공을 맞추는 패턴이 반복되고 있어요. 이 드릴은 <strong style="color:var(--text)">메트로놈 60bpm</strong>으로 두 박자 호흡을 강제해 백스윙 시간을 0.9초까지 늘립니다.</p>
+          </div>
+        </div>
+
+        <!-- Steps -->
+        <div class="section-divider">
+          <span class="num">[ 02 ]</span>
+          <h2>5단계 <span class="em">실행</span> 가이드</h2>
+          <div class="line"></div>
+        </div>
+
+        <div class="card">
+          <div class="step-list">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h4>셋업 — 메트로놈 60bpm</h4>
+                <p>스마트폰 메트로놈을 60bpm으로 켜고, 어드레스 자세에서 두 박자 동안 가만히 호흡을 정리합니다. "딱 — 딱 — 딱" 소리가 몸에 익을 때까지 5회 반복.</p>
+                <div class="step-tip">
+                  <strong>tip · 호흡</strong>
+                  들숨 1박 / 날숨 1박 — 어깨 힘이 빠지면 준비 완료.
+                </div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h4>백스윙 — 3박자에 걸쳐 천천히</h4>
+                <p>"하나 — 둘 — 셋" 카운트에 맞춰 클럽을 탑 포지션까지 가져갑니다. 어깨가 90° 회전하는 시점이 정확히 3박째여야 합니다. 빠르게 올라가면 다시 시작하세요.</p>
+                <div class="step-tip">
+                  <strong>tip · 체크포인트</strong>
+                  3박째에 왼쪽 어깨가 턱 밑에 있어야 합니다.
+                </div>
+                <div class="step-warn">
+                  <strong>warn · 흔한 실수</strong>
+                  손목으로 들어올리지 마세요 — 큰 근육(등·어깨)으로만 회전합니다.
+                </div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h4>전환 — 1박 정지</h4>
+                <p>탑에서 정확히 1박 동안 멈춥니다. 이때 체중은 이미 왼쪽 다리로 50%가 이동한 상태여야 합니다. 정지 동안 "공을 본다 → 발끝을 느낀다" 순서로 의식.</p>
+                <div class="step-tip">
+                  <strong>tip · 시선</strong>
+                  공의 한 점을 응시하며 멈춤 시간을 카운트합니다.
+                </div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <h4>다운스윙 — 1박에 폭발</h4>
+                <p>다음 1박 안에 임팩트까지 완성합니다. 백스윙(3박)과 다운스윙(1박)의 비율이 정확히 3 : 1. 처음에는 50% 스윙으로 시작해 점진적으로 풀스윙으로.</p>
+                <div class="step-warn">
+                  <strong>warn · 체중 이동</strong>
+                  손이 먼저 떨어지면 캐스팅 — 반드시 하체 회전이 먼저 시작되어야 합니다.
+                </div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num">5</div>
+              <div class="step-content">
+                <h4>피니시 — 3박 유지</h4>
+                <p>임팩트 후 피니시 자세에서 3박자 동안 멈추고 자세를 점검합니다. 오른발 뒤꿈치가 완전히 들리고 벨트 버클이 타깃을 향해야 합니다.</p>
+                <div class="step-tip">
+                  <strong>tip · 자가 체크</strong>
+                  거울 앞에서 / 또는 셀프 촬영으로 자세 확인을 권장합니다.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Reviews -->
+        <div class="section-divider">
+          <span class="num">[ 03 ]</span>
+          <h2>같은 처방을 받은 <span class="em">동료</span>들의 후기</h2>
+          <div class="line"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head" style="margin-bottom: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 12px;">
+              <div class="serif" style="font-size: 36px; color: var(--accent); line-height: 1;">4.8</div>
+              <div>
+                <div class="stars">★ ★ ★ ★ ★</div>
+                <div class="card-sub" style="margin-top: 4px;">312 REVIEWS · 평균 +6.4점 향상</div>
+              </div>
+            </div>
+            <button class="btn ghost">전체 보기 →</button>
+          </div>
+
+          <div class="review">
+            <div class="review-head">
+              <div class="review-avatar">박</div>
+              <div>
+                <div class="review-name">박 · HCP 18 · 6주 후기</div>
+                <div class="review-meta">2024.11.02 · 21회 완료</div>
+              </div>
+              <div style="margin-left: auto;" class="stars">★ ★ ★ ★ ★</div>
+            </div>
+            <div class="review-body">
+              "처음엔 카운트가 너무 느려 답답했는데, 2주 지나니까 코스에서도 자연스럽게 박자가 나옵니다. 드라이버 평균 비거리 +12야드, 페어웨이 적중률 38% → 54%."
+            </div>
+          </div>
+
+          <div class="review">
+            <div class="review-head">
+              <div class="review-avatar">정</div>
+              <div>
+                <div class="review-name">정 · HCP 24 · 4주 후기</div>
+                <div class="review-meta">2024.10.18 · 14회 완료</div>
+              </div>
+              <div style="margin-left: auto;" class="stars">★ ★ ★ ★ ☆</div>
+            </div>
+            <div class="review-body">
+              "혼자 하다 보면 무의식적으로 빨라지는데, 코치 채팅에 영상 올렸더니 박자가 또 무너졌다고 다시 알려줘서 도움됐어요."
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT -->
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+
+        <!-- Target metrics -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">목표 지표</div>
+            <span class="card-sub">2주 · 14회</span>
+          </div>
+          <div class="target-card" style="background: transparent; border: none; padding: 0;">
+            <div class="target-row">
+              <span class="target-name">템포 비율</span>
+              <span class="target-val">2.4 → <span style="color:var(--accent)">3.0</span></span>
+            </div>
+            <div class="target-row">
+              <span class="target-name">백스윙 시간</span>
+              <span class="target-val">0.62s → <span style="color:var(--accent)">0.9s</span></span>
+            </div>
+            <div class="target-row">
+              <span class="target-name">다운스윙 시간</span>
+              <span class="target-val">0.26s → <span style="color:var(--accent)">0.3s</span></span>
+            </div>
+            <div class="target-row">
+              <span class="target-name">전환 정지</span>
+              <span class="target-val">없음 → <span style="color:var(--accent)">0.2s</span></span>
+            </div>
+            <div class="target-row">
+              <span class="target-name">예상 점수</span>
+              <span class="target-val">78 → <span style="color:var(--accent)">86</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">이 드릴 진행도</div>
+            <span class="card-sub">WEEK 02 / 02</span>
+          </div>
+          <div class="progress-card-mini" style="background: transparent; border: none; padding: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <div>
+                <span class="serif" style="font-size: 28px; color: var(--accent);">9</span>
+                <span class="mono" style="color: var(--text-3); font-size: 12px;">/ 14회 완료</span>
+              </div>
+              <div class="chip ok mono">+5점 향상중</div>
+            </div>
+            <div class="week-grid">
+              <div class="week-cell done">M</div>
+              <div class="week-cell done">T</div>
+              <div class="week-cell miss">W</div>
+              <div class="week-cell done">T</div>
+              <div class="week-cell done">F</div>
+              <div class="week-cell miss">S</div>
+              <div class="week-cell done">S</div>
+            </div>
+            <div class="week-grid">
+              <div class="week-cell done">M</div>
+              <div class="week-cell done">T</div>
+              <div class="week-cell done">W</div>
+              <div class="week-cell today">T</div>
+              <div class="week-cell" style="opacity:0.5">F</div>
+              <div class="week-cell" style="opacity:0.5">S</div>
+              <div class="week-cell" style="opacity:0.5">S</div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-3); display:flex; justify-content:space-between; margin-top:6px;">
+              <span>WEEK 1 · 5/7</span>
+              <span>WEEK 2 · 4/7</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Equipment -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">필요한 도구</div>
+          </div>
+          <div class="equip-grid">
+            <div class="equip-item">
+              <div class="equip-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="equip-name">메트로놈</div>
+                <div class="equip-sub">60 BPM · 앱</div>
+              </div>
+            </div>
+            <div class="equip-item">
+              <div class="equip-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2z"/></svg>
+              </div>
+              <div>
+                <div class="equip-name">7번 아이언</div>
+                <div class="equip-sub">권장</div>
+              </div>
+            </div>
+            <div class="equip-item">
+              <div class="equip-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg>
+              </div>
+              <div>
+                <div class="equip-name">거울 / 카메라</div>
+                <div class="equip-sub">자세 점검용</div>
+              </div>
+            </div>
+            <div class="equip-item">
+              <div class="equip-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l3-9h12l3 9-9 9-9-9z"/></svg>
+              </div>
+              <div>
+                <div class="equip-name">매트</div>
+                <div class="equip-sub">실내 가능</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Related drills -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">함께 처방된 드릴</div>
+            <span class="card-sub">3 / 12</span>
+          </div>
+          <div class="related">
+            <a class="related-row" href="drill.html">
+              <div class="related-thumb">
+                <svg viewBox="0 0 38 50">
+                  <circle cx="19" cy="6" r="4"/>
+                  <line x1="19" y1="10" x2="19" y2="28"/>
+                  <line x1="10" y1="18" x2="28" y2="14"/>
+                  <line x1="28" y1="14" x2="34" y2="6"/>
+                  <line x1="14" y1="28" x2="10" y2="44"/>
+                  <line x1="24" y1="28" x2="28" y2="44"/>
+                </svg>
+              </div>
+              <div>
+                <div class="related-name">하체 고정 — 발 폭 1.5배 셋업</div>
+                <div class="related-meta">8MIN · 처방 매치 88%</div>
+              </div>
+              <div class="related-difficulty">
+                <span class="diff-dot"></span><span class="diff-dot"></span><span class="diff-dot off"></span><span class="diff-dot off"></span><span class="diff-dot off"></span>
+              </div>
+            </a>
+            <a class="related-row" href="drill.html">
+              <div class="related-thumb">
+                <svg viewBox="0 0 38 50">
+                  <circle cx="19" cy="6" r="4"/>
+                  <line x1="19" y1="10" x2="22" y2="28"/>
+                  <line x1="12" y1="20" x2="30" y2="14"/>
+                  <line x1="14" y1="28" x2="10" y2="44"/>
+                  <line x1="26" y1="28" x2="30" y2="44"/>
+                  <line x1="30" y1="14" x2="36" y2="34" stroke-dasharray="2 2"/>
+                </svg>
+              </div>
+              <div>
+                <div class="related-name">임팩트 정지 — 미러 드릴</div>
+                <div class="related-meta">15MIN · 처방 매치 76%</div>
+              </div>
+              <div class="related-difficulty">
+                <span class="diff-dot"></span><span class="diff-dot"></span><span class="diff-dot"></span><span class="diff-dot off"></span><span class="diff-dot off"></span>
+              </div>
+            </a>
+            <a class="related-row" href="drill.html">
+              <div class="related-thumb">
+                <svg viewBox="0 0 38 50">
+                  <circle cx="19" cy="6" r="4"/>
+                  <line x1="19" y1="10" x2="19" y2="28"/>
+                  <line x1="10" y1="14" x2="28" y2="14"/>
+                  <line x1="14" y1="28" x2="14" y2="44"/>
+                  <line x1="24" y1="28" x2="24" y2="44"/>
+                </svg>
+              </div>
+              <div>
+                <div class="related-name">L-to-L 스윙 — 손목 코킹</div>
+                <div class="related-meta">10MIN · 처방 매치 65%</div>
+              </div>
+              <div class="related-difficulty">
+                <span class="diff-dot"></span><span class="diff-dot off"></span><span class="diff-dot off"></span><span class="diff-dot off"></span><span class="diff-dot off"></span>
+              </div>
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Sticky CTA bar -->
+    <div class="cta-bar">
+      <div class="cta-meta">
+        <span><strong>오늘 1회</strong> 더 권장</span>
+        <span style="color:var(--text-4)">|</span>
+        <span>예상 소요 <strong>12분</strong></span>
+        <span style="color:var(--text-4)">|</span>
+        <span>완료시 <strong style="color:var(--accent)">+0.6점</strong></span>
+      </div>
+      <div class="cta-spacer"></div>
+      <button class="btn lg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14" stroke-linecap="round"/></svg>
+        나중에
+      </button>
+      <button class="btn lg primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        지금 시작 · 12분
+      </button>
+    </div>
+
+  </main>
+</div>
+
+<script src="components/hifi-sidebar.js"></script>
+</body>
+</html>

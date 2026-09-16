@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · 진행률 대시보드 (Hi-Fi)</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/hifi.css">
+<style>
+  /* Range picker */
+  .range-tabs {
+    display: inline-flex;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .range-tab {
+    padding: 7px 14px;
+    background: transparent; border: none;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+    border-radius: 7px;
+    letter-spacing: 0.06em;
+  }
+  .range-tab.on {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+
+  /* KPI row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi.hi {
+    border-color: rgba(212,255,58,0.25);
+    background: linear-gradient(135deg, rgba(212,255,58,0.05), transparent 60%), var(--bg-2);
+  }
+  .kpi-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .kpi-val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .kpi-val .unit {
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 14px;
+    color: var(--text-3);
+    margin-left: 4px;
+    font-weight: 500;
+  }
+  .kpi.hi .kpi-val { color: var(--accent); }
+  .kpi-delta {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 10px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .kpi-delta.up { color: var(--ok); }
+  .kpi-delta.down { color: var(--danger); }
+  .kpi-spark {
+    position: absolute;
+    right: 16px; top: 16px;
+    width: 80px; height: 32px;
+    opacity: 0.8;
+  }
+
+  /* Score chart */
+  .chart-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 24px;
+  }
+  .chart-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .chart-legend {
+    display: flex; gap: 16px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 0.06em;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+  }
+  .legend-dot.you { background: var(--accent); }
+  .legend-dot.avg { background: var(--text-3); }
+  .legend-dot.target {
+    background: transparent;
+    border: 1.5px dashed var(--text-2);
+  }
+
+  .chart-stage {
+    position: relative;
+    height: 280px;
+  }
+  .chart-grid-line {
+    position: absolute;
+    left: 40px; right: 0;
+    height: 1px;
+    background: var(--line);
+  }
+  .chart-y-label {
+    position: absolute;
+    left: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    transform: translateY(-50%);
+  }
+  .chart-x-labels {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    padding-left: 40px;
+    margin-top: 8px;
+  }
+  .chart-x-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    text-align: center;
+    letter-spacing: 0.06em;
+  }
+
+  /* 2-col layout */
+  .prog-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+  }
+
+  /* Radar */
+  .radar-stage {
+    aspect-ratio: 1;
+    max-width: 320px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* Achievement grid */
+  .ach-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .ach {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    position: relative;
+  }
+  .ach.done {
+    background: var(--accent-dim);
+    border-color: rgba(212,255,58,0.3);
+  }
+  .ach.locked {
+    opacity: 0.4;
+  }
+  .ach-icon {
+    width: 38px; height: 38px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    background: var(--bg-4);
+    display: grid; place-items: center;
+    color: var(--text-2);
+  }
+  .ach.done .ach-icon {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+  .ach-name {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  .ach.done .ach-name { color: var(--accent); }
+  .ach-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+
+  /* Session list */
+  .sess-row {
+    display: grid;
+    grid-template-columns: 72px 1fr 80px 80px 80px 36px;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .sess-row:hover { border-color: var(--line-3); background: var(--bg-4); }
+  .sess-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+  .sess-date strong { color: var(--text); font-weight: 700; }
+  .sess-name { font-size: 13px; font-weight: 600; }
+  .sess-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .sess-col { text-align: center; }
+  .sess-col-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-4);
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+  .sess-col-val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 17px;
+  }
+  .sess-col-val.hi { color: var(--accent); }
+  .sess-col-val.bad { color: var(--danger); }
+  .sess-arrow { color: var(--text-3); }
+
+  /* Goals */
+  .goal-list .goal-item {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .goal-item.done {
+    border-color: rgba(77,214,138,0.3);
+    background: linear-gradient(135deg, rgba(77,214,138,0.06), transparent);
+  }
+  .goal-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .goal-name { font-size: 13px; font-weight: 600; }
+  .goal-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+  }
+  .goal-bar-box {
+    height: 6px;
+    background: var(--bg-4);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .goal-bar-box .fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+  }
+  .goal-item.done .fill { background: var(--ok); }
+  .goal-meta {
+    display: flex; justify-content: space-between;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+  }
+
+  /* Heatmap calendar */
+  .heat-cal {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    gap: 3px;
+  }
+  .heat-day {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: var(--bg-3);
+  }
+  .heat-day.l1 { background: rgba(212,255,58,0.15); }
+  .heat-day.l2 { background: rgba(212,255,58,0.35); }
+  .heat-day.l3 { background: rgba(212,255,58,0.6); }
+  .heat-day.l4 { background: var(--accent); }
+  .heat-day.today {
+    outline: 1.5px solid var(--text);
+    outline-offset: 1px;
+  }
+
+  /* Highlights */
+  .highlight {
+    background: linear-gradient(135deg, rgba(212,255,58,0.06), rgba(90,169,255,0.04));
+    border: 1px solid rgba(212,255,58,0.2);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    align-items: center;
+  }
+  .h-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #0a0c10;
+    display: grid; place-items: center;
+  }
+  .h-title {
+    font-size: 14px; font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 3px;
+  }
+  .h-title .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .h-sub {
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <aside class="sidebar" data-hifi-sidebar="progress"></aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div class="crumb">
+        <a href="index.html">와이어프레임</a>
+        <span class="sep">/</span>
+        <span class="now">진행률 대시보드</span>
+      </div>
+      <div class="topbar-actions">
+        <div class="range-tabs">
+          <button class="range-tab">7D</button>
+          <button class="range-tab on">30D</button>
+          <button class="range-tab">90D</button>
+          <button class="range-tab">1Y</button>
+          <button class="range-tab">ALL</button>
+        </div>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          내보내기
+        </button>
+        <button class="btn primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          목표 설정
+        </button>
+      </div>
+    </div>
+
+    <div class="header-block">
+      <div>
+        <div class="session-meta">PROGRESS DASHBOARD · 지난 30일 · 20세션</div>
+        <h1 class="h1">꾸준히, <span class="em">좋아지고</span> 있어요</h1>
+        <div style="margin-top:10px; color: var(--text-2); font-size:14px; max-width: 680px; line-height: 1.5;">
+          최근 한 달간 평균 점수가 <span class="serif" style="color:var(--accent)">+6.4</span>점 올랐고, 주간 목표 <span class="serif" style="color:var(--accent)">3/4</span>을 달성했습니다.
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="h-stat">
+          <div class="val hi">B+<span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-3); margin-left:4px; font-style:normal;">/ A-</span></div>
+          <div class="lbl">현재 등급</div>
+          <div class="delta">+1 grade</div>
+        </div>
+        <div class="h-stat">
+          <div class="val">20<span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-3); margin-left:4px; font-style:normal;">sess</span></div>
+          <div class="lbl">30일 세션</div>
+        </div>
+        <div class="h-stat">
+          <div class="val">14</div>
+          <div class="lbl">연속 일수</div>
+          <div class="delta">최장 기록</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI row -->
+    <div class="kpi-row">
+      <div class="kpi hi">
+        <div class="kpi-lbl">평균 점수</div>
+        <div class="kpi-val">78<span class="unit">/ 100</span></div>
+        <div class="kpi-delta up">▲ +6.4 vs 이전 30일</div>
+        <svg class="kpi-spark" viewBox="0 0 80 32">
+          <polyline points="0,26 12,22 24,24 36,18 48,14 60,12 72,8 80,6" fill="none" stroke="#d4ff3a" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="80" cy="6" r="2.5" fill="#d4ff3a"/>
+        </svg>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">템포 비율</div>
+        <div class="kpi-val">2.7<span class="unit">: 1</span></div>
+        <div class="kpi-delta up">▲ +0.3 · 목표 3.0 근접</div>
+        <svg class="kpi-spark" viewBox="0 0 80 32">
+          <polyline points="0,24 12,22 24,20 36,20 48,16 60,14 72,12 80,10" fill="none" stroke="#b8bdc7" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">임팩트 스파인</div>
+        <div class="kpi-val">+4<span class="unit">°</span></div>
+        <div class="kpi-delta down">▼ 정체 · 목표 −1°</div>
+        <svg class="kpi-spark" viewBox="0 0 80 32">
+          <polyline points="0,12 12,14 24,12 36,16 48,14 60,16 72,14 80,14" fill="none" stroke="#ffb84d" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">드릴 완료율</div>
+        <div class="kpi-val">87<span class="unit">%</span></div>
+        <div class="kpi-delta up">▲ +12% · 18 / 21회</div>
+        <svg class="kpi-spark" viewBox="0 0 80 32">
+          <polyline points="0,20 12,22 24,18 36,18 48,12 60,10 72,8 80,6" fill="none" stroke="#4dd68a" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Score chart -->
+    <div class="chart-card" style="margin-bottom: 20px;">
+      <div class="chart-head">
+        <div>
+          <div class="card-title">점수 추이 <span class="card-sub" style="margin-left:8px">DAILY · 30D</span></div>
+          <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">추세선이 <strong style="color: var(--accent)">목표 85</strong>를 향해 상승 중</div>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><span class="legend-dot you"></span>나의 점수</div>
+          <div class="legend-item"><span class="legend-dot avg"></span>동일 핸디캡 평균</div>
+          <div class="legend-item"><span class="legend-dot target"></span>목표 85</div>
+        </div>
+      </div>
+
+      <div class="chart-stage">
+        <svg viewBox="0 0 900 260" style="width: 100%; height: 100%;" preserveAspectRatio="none">
+          <!-- gridlines -->
+          <g stroke="rgba(255,255,255,0.06)" stroke-width="1">
+            <line x1="40" y1="20" x2="900" y2="20"/>
+            <line x1="40" y1="80" x2="900" y2="80"/>
+            <line x1="40" y1="140" x2="900" y2="140"/>
+            <line x1="40" y1="200" x2="900" y2="200"/>
+            <line x1="40" y1="260" x2="900" y2="260"/>
+          </g>
+          <!-- Y labels -->
+          <g fill="#6b7280" font-family="JetBrains Mono" font-size="10">
+            <text x="0" y="24">100</text>
+            <text x="0" y="84">85</text>
+            <text x="0" y="144">70</text>
+            <text x="0" y="204">55</text>
+            <text x="5" y="262">40</text>
+          </g>
+          <!-- Target line 85 -->
+          <line x1="40" y1="80" x2="900" y2="80" stroke="#b8bdc7" stroke-width="1.2" stroke-dasharray="4 6" opacity="0.55"/>
+          <text x="880" y="74" fill="#b8bdc7" font-family="JetBrains Mono" font-size="10" text-anchor="end">TARGET 85</text>
+
+          <!-- Average line (handicap peers) -->
+          <polyline points="60,158 130,154 200,150 270,146 340,144 410,138 480,134 550,130 620,128 690,126 760,122 830,118"
+            fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="3 5"/>
+
+          <!-- Your area fill -->
+          <path d="M 60 196 L 130 188 L 200 178 L 270 192 L 340 166 L 410 170 L 480 150 L 550 158 L 620 130 L 690 136 L 760 108 L 830 114 L 830 260 L 60 260 Z"
+            fill="rgba(212,255,58,0.12)"/>
+
+          <!-- Your line -->
+          <polyline points="60,196 130,188 200,178 270,192 340,166 410,170 480,150 550,158 620,130 690,136 760,108 830,114"
+            fill="none" stroke="#d4ff3a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Your dots -->
+          <g fill="#d4ff3a">
+            <circle cx="60" cy="196" r="3"/>
+            <circle cx="130" cy="188" r="3"/>
+            <circle cx="200" cy="178" r="3"/>
+            <circle cx="270" cy="192" r="3"/>
+            <circle cx="340" cy="166" r="3"/>
+            <circle cx="410" cy="170" r="3"/>
+            <circle cx="480" cy="150" r="3"/>
+            <circle cx="550" cy="158" r="3"/>
+            <circle cx="620" cy="130" r="3"/>
+            <circle cx="690" cy="136" r="3"/>
+            <circle cx="760" cy="108" r="3"/>
+            <circle cx="830" cy="114" r="4.5" stroke="#0a0c10" stroke-width="2"/>
+          </g>
+
+          <!-- Latest callout -->
+          <g>
+            <line x1="830" y1="114" x2="830" y2="60" stroke="#d4ff3a" stroke-width="1" stroke-dasharray="2 3"/>
+            <rect x="784" y="32" width="92" height="24" rx="4" fill="#0a0c10" stroke="#d4ff3a"/>
+            <text x="830" y="48" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="600" text-anchor="middle">오늘 · 78</text>
+          </g>
+
+          <!-- Milestone markers -->
+          <g>
+            <circle cx="410" cy="170" r="6" fill="none" stroke="#5aa9ff" stroke-width="1.5"/>
+            <text x="410" y="236" fill="#5aa9ff" font-family="JetBrains Mono" font-size="9" text-anchor="middle">드릴 시작</text>
+          </g>
+          <g>
+            <circle cx="690" cy="136" r="6" fill="none" stroke="#b985ff" stroke-width="1.5"/>
+            <text x="690" y="102" fill="#b985ff" font-family="JetBrains Mono" font-size="9" text-anchor="middle">C → B+</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="chart-x-labels">
+        <div class="chart-x-label">03/21</div>
+        <div class="chart-x-label">24</div>
+        <div class="chart-x-label">27</div>
+        <div class="chart-x-label">30</div>
+        <div class="chart-x-label">04/02</div>
+        <div class="chart-x-label">05</div>
+        <div class="chart-x-label">08</div>
+        <div class="chart-x-label">11</div>
+        <div class="chart-x-label">14</div>
+        <div class="chart-x-label">16</div>
+        <div class="chart-x-label">18</div>
+        <div class="chart-x-label" style="color: var(--accent); font-weight: 700;">오늘</div>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="prog-grid">
+
+      <!-- LEFT -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+
+        <!-- Highlights -->
+        <div>
+          <div class="card-head" style="margin-bottom: 12px;">
+            <div class="card-title">이번 달 <span class="em">하이라이트</span></div>
+            <span class="card-sub">3 MILESTONES</span>
+          </div>
+
+          <div class="highlight">
+            <div class="h-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+            </div>
+            <div>
+              <div class="h-title">첫 <span class="em">B+ 등급</span> 달성</div>
+              <div class="h-sub">04.14 · 세션 #032 · 7번 아이언 · 82점. 이전 평균 대비 +8점</div>
+            </div>
+          </div>
+
+          <div class="highlight">
+            <div class="h-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div>
+              <div class="h-title">템포 비율 <span class="em">2.4 → 2.7</span> 개선</div>
+              <div class="h-sub">14일 연속 템포 게이트 드릴 수행 · 목표 3.0까지 0.3 남음</div>
+            </div>
+          </div>
+
+          <div class="highlight">
+            <div class="h-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <div>
+              <div class="h-title"><span class="em">14일</span> 연속 세션 — 최장 기록</div>
+              <div class="h-sub">04.06부터 오늘까지. 최소 1회 스윙 기록 또는 드릴 완료 기준</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent sessions -->
+        <div>
+          <div class="card-head" style="margin-bottom: 12px;">
+            <div class="card-title">최근 세션</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span class="card-sub">20 SESSIONS · 30D</span>
+              <button class="btn ghost">전체 →</button>
+            </div>
+          </div>
+
+          <a class="sess-row" href="detail.html">
+            <div class="sess-date"><strong>04.19</strong><br>오늘 14:02</div>
+            <div>
+              <div class="sess-name">세션 #047 · 연습장</div>
+              <div class="sess-sub">7 IRON · 10 SWINGS · 0:08:24</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">SCORE</div>
+              <div class="sess-col-val">78</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">TEMPO</div>
+              <div class="sess-col-val">2.7</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">GRADE</div>
+              <div class="sess-col-val hi">B+</div>
+            </div>
+            <div class="sess-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" stroke-linecap="round"/></svg>
+            </div>
+          </a>
+
+          <a class="sess-row" href="detail.html">
+            <div class="sess-date"><strong>04.18</strong><br>19:40</div>
+            <div>
+              <div class="sess-name">세션 #046 · 실내 스튜디오</div>
+              <div class="sess-sub">7 IRON · 14 SWINGS · 0:12:08</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">SCORE</div>
+              <div class="sess-col-val hi">82</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">TEMPO</div>
+              <div class="sess-col-val hi">2.9</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">GRADE</div>
+              <div class="sess-col-val hi">B+</div>
+            </div>
+            <div class="sess-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" stroke-linecap="round"/></svg>
+            </div>
+          </a>
+
+          <a class="sess-row" href="detail.html">
+            <div class="sess-date"><strong>04.17</strong><br>18:15</div>
+            <div>
+              <div class="sess-name">세션 #045 · 연습장</div>
+              <div class="sess-sub">드라이버 · 22 SWINGS · 0:18:42</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">SCORE</div>
+              <div class="sess-col-val">74</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">TEMPO</div>
+              <div class="sess-col-val">2.4</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">GRADE</div>
+              <div class="sess-col-val">B</div>
+            </div>
+            <div class="sess-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" stroke-linecap="round"/></svg>
+            </div>
+          </a>
+
+          <a class="sess-row" href="detail.html">
+            <div class="sess-date"><strong>04.15</strong><br>14:30</div>
+            <div>
+              <div class="sess-name">세션 #044 · 연습장</div>
+              <div class="sess-sub">7 IRON · 18 SWINGS · 0:14:12</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">SCORE</div>
+              <div class="sess-col-val">76</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">TEMPO</div>
+              <div class="sess-col-val">2.6</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">GRADE</div>
+              <div class="sess-col-val">B</div>
+            </div>
+            <div class="sess-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" stroke-linecap="round"/></svg>
+            </div>
+          </a>
+
+          <a class="sess-row" href="detail.html">
+            <div class="sess-date"><strong>04.14</strong><br>16:55</div>
+            <div>
+              <div class="sess-name">세션 #043 · 스크린</div>
+              <div class="sess-sub">MIXED · 32 SWINGS · 1:04:20</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">SCORE</div>
+              <div class="sess-col-val">72</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">TEMPO</div>
+              <div class="sess-col-val">2.5</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">GRADE</div>
+              <div class="sess-col-val">B−</div>
+            </div>
+            <div class="sess-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" stroke-linecap="round"/></svg>
+            </div>
+          </a>
+
+          <a class="sess-row" href="detail.html">
+            <div class="sess-date"><strong>04.12</strong><br>10:20</div>
+            <div>
+              <div class="sess-name">세션 #042 · 실외 필드</div>
+              <div class="sess-sub">ROUND · 18 HOLES · 5:32</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">SCORE</div>
+              <div class="sess-col-val">70</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">TEMPO</div>
+              <div class="sess-col-val">2.3</div>
+            </div>
+            <div class="sess-col">
+              <div class="sess-col-lbl">GRADE</div>
+              <div class="sess-col-val">C+</div>
+            </div>
+            <div class="sess-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" stroke-linecap="round"/></svg>
+            </div>
+          </a>
+        </div>
+
+      </div>
+
+      <!-- RIGHT -->
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+
+        <!-- Radar -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">스킬 레이더</div>
+            <span class="card-sub">7 AXIS · 30D AVG</span>
+          </div>
+          <div class="radar-stage">
+            <svg viewBox="0 0 300 300" style="width:100%; height:100%;">
+              <!-- rings -->
+              <g fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1">
+                <polygon points="150,40 245,95 245,205 150,260 55,205 55,95"/>
+                <polygon points="150,70 221,111 221,189 150,230 79,189 79,111"/>
+                <polygon points="150,100 197,128 197,172 150,200 103,172 103,128"/>
+                <polygon points="150,130 173,144 173,156 150,170 127,156 127,144"/>
+              </g>
+              <!-- axis lines -->
+              <g stroke="rgba(255,255,255,0.08)" stroke-width="1">
+                <line x1="150" y1="40" x2="150" y2="260"/>
+                <line x1="55" y1="95" x2="245" y2="205"/>
+                <line x1="245" y1="95" x2="55" y2="205"/>
+              </g>
+              <!-- target polygon -->
+              <polygon points="150,55 230,100 230,200 150,245 70,200 70,100" fill="rgba(184,189,199,0.06)" stroke="#b8bdc7" stroke-width="1.2" stroke-dasharray="3 5"/>
+              <!-- your polygon -->
+              <polygon points="150,70 218,111 210,182 150,235 88,195 82,118"
+                fill="rgba(212,255,58,0.18)"
+                stroke="#d4ff3a"
+                stroke-width="2"
+                stroke-linejoin="round"/>
+              <!-- dots -->
+              <g fill="#d4ff3a">
+                <circle cx="150" cy="70" r="4"/>
+                <circle cx="218" cy="111" r="4"/>
+                <circle cx="210" cy="182" r="4"/>
+                <circle cx="150" cy="235" r="4"/>
+                <circle cx="88" cy="195" r="4"/>
+                <circle cx="82" cy="118" r="4"/>
+              </g>
+              <!-- labels -->
+              <g fill="#b8bdc7" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle">
+                <text x="150" y="28">셋업</text>
+                <text x="262" y="90">백스윙</text>
+                <text x="262" y="212">다운스윙</text>
+                <text x="150" y="280">임팩트</text>
+                <text x="38" y="212">릴리즈</text>
+                <text x="38" y="90">피니시</text>
+              </g>
+              <!-- scores next to nodes -->
+              <g fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" font-weight="600">
+                <text x="150" y="60" text-anchor="middle">84</text>
+                <text x="234" y="107" text-anchor="start">76</text>
+                <text x="228" y="184" text-anchor="start">68</text>
+                <text x="150" y="252" text-anchor="middle">72</text>
+                <text x="72" y="204" text-anchor="end">82</text>
+                <text x="66" y="118" text-anchor="end">86</text>
+              </g>
+            </svg>
+          </div>
+          <div style="margin-top: 12px; padding-top: 14px; border-top: 1px dashed var(--line); display: flex; gap: 16px; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+            <div style="color: var(--text-3);">평균 <strong style="color: var(--accent); font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px;">78</strong></div>
+            <div style="color: var(--text-3);">최강 <strong style="color: var(--text);">피니시 86</strong></div>
+            <div style="color: var(--text-3);">약점 <strong style="color: var(--danger);">다운 68</strong></div>
+          </div>
+        </div>
+
+        <!-- Goals -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">주간 목표</div>
+            <span class="card-sub">3 / 4 ACHIEVED</span>
+          </div>
+          <div class="goal-list">
+            <div class="goal-item done">
+              <div class="goal-head">
+                <div class="goal-name">✓ 주 5회 세션</div>
+                <div class="goal-date">04.14 달성</div>
+              </div>
+              <div class="goal-bar-box"><div class="fill" style="width: 100%"></div></div>
+              <div class="goal-meta"><span>5 / 5 세션</span><span style="color: var(--ok)">100%</span></div>
+            </div>
+            <div class="goal-item done">
+              <div class="goal-head">
+                <div class="goal-name">✓ 드릴 15분/일 × 5일</div>
+                <div class="goal-date">04.18 달성</div>
+              </div>
+              <div class="goal-bar-box"><div class="fill" style="width: 100%"></div></div>
+              <div class="goal-meta"><span>5 / 5 일</span><span style="color: var(--ok)">100%</span></div>
+            </div>
+            <div class="goal-item done">
+              <div class="goal-head">
+                <div class="goal-name">✓ B+ 등급 1회</div>
+                <div class="goal-date">04.18</div>
+              </div>
+              <div class="goal-bar-box"><div class="fill" style="width: 100%"></div></div>
+              <div class="goal-meta"><span>1 / 1</span><span style="color: var(--ok)">100%</span></div>
+            </div>
+            <div class="goal-item">
+              <div class="goal-head">
+                <div class="goal-name">템포 비율 2.9↑ 3회</div>
+                <div class="goal-date">2일 남음</div>
+              </div>
+              <div class="goal-bar-box"><div class="fill" style="width: 66%"></div></div>
+              <div class="goal-meta"><span>2 / 3 세션</span><span style="color: var(--accent)">66%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Heat calendar -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">연습 캘린더</div>
+            <span class="card-sub">30D · 4W</span>
+          </div>
+          <div style="margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); letter-spacing: 0.06em; display: flex; justify-content: space-between;">
+            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+            <span style="opacity:0.3">|</span>
+            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+          </div>
+          <div class="heat-cal">
+            <div class="heat-day"></div><div class="heat-day l1"></div><div class="heat-day"></div><div class="heat-day l2"></div><div class="heat-day l1"></div><div class="heat-day l2"></div><div class="heat-day"></div>
+            <div class="heat-day l2"></div><div class="heat-day l1"></div><div class="heat-day l3"></div><div class="heat-day"></div><div class="heat-day l2"></div><div class="heat-day l1"></div><div class="heat-day l2"></div>
+          </div>
+          <div class="heat-cal" style="margin-top: 3px;">
+            <div class="heat-day l2"></div><div class="heat-day l3"></div><div class="heat-day l2"></div><div class="heat-day l3"></div><div class="heat-day l4"></div><div class="heat-day l2"></div><div class="heat-day l1"></div>
+            <div class="heat-day l3"></div><div class="heat-day l4"></div><div class="heat-day l3"></div><div class="heat-day l3"></div><div class="heat-day l4"></div><div class="heat-day l2"></div><div class="heat-day l3 today"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3);">
+            <span>적음</span>
+            <div style="display: flex; gap: 3px;">
+              <div class="heat-day" style="width: 10px; height: 10px;"></div>
+              <div class="heat-day l1" style="width: 10px; height: 10px;"></div>
+              <div class="heat-day l2" style="width: 10px; height: 10px;"></div>
+              <div class="heat-day l3" style="width: 10px; height: 10px;"></div>
+              <div class="heat-day l4" style="width: 10px; height: 10px;"></div>
+            </div>
+            <span>많음</span>
+          </div>
+        </div>
+
+        <!-- Achievements -->
+        <div class="card flat">
+          <div class="card-head">
+            <div class="card-title">배지 · 업적</div>
+            <span class="card-sub">7 / 24</span>
+          </div>
+          <div class="ach-grid">
+            <div class="ach done">
+              <div class="ach-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 6.5 7 1-5 5 1.5 7L12 17.8 5.5 21.5 7 14.5 2 9.5l7-1z"/></svg>
+              </div>
+              <div class="ach-name">첫 B+</div>
+              <div class="ach-date">04.14</div>
+            </div>
+            <div class="ach done">
+              <div class="ach-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <div class="ach-name">14일 연속</div>
+              <div class="ach-date">오늘</div>
+            </div>
+            <div class="ach done">
+              <div class="ach-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+              </div>
+              <div class="ach-name">드릴 10개</div>
+              <div class="ach-date">04.11</div>
+            </div>
+            <div class="ach done">
+              <div class="ach-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+              </div>
+              <div class="ach-name">첫 +10점</div>
+              <div class="ach-date">04.08</div>
+            </div>
+            <div class="ach">
+              <div class="ach-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+              </div>
+              <div class="ach-name">세션 50</div>
+              <div class="ach-date">47 / 50</div>
+            </div>
+            <div class="ach">
+              <div class="ach-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14" stroke-linecap="round"/></svg>
+              </div>
+              <div class="ach-name">30일 연속</div>
+              <div class="ach-date">14 / 30</div>
+            </div>
+            <div class="ach locked">
+              <div class="ach-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="ach-name">A 등급</div>
+              <div class="ach-date">LOCKED</div>
+            </div>
+            <div class="ach locked">
+              <div class="ach-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="ach-name">100일 ⚡</div>
+              <div class="ach-date">LOCKED</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="components/hifi-sidebar.js"></script>
+</body>
+</html>

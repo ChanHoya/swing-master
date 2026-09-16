@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · Wireframes (Final Direction)</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Kalam:wght@400;700&family=Patrick+Hand&family=Architects+Daughter&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/wireframe.css">
+<style>
+  .final-tag {
+    position: absolute; top: -12px; right: 12px;
+    background: var(--accent); color: var(--paper);
+    font-family: var(--font-mono); font-size: 10px;
+    padding: 3px 8px; border-radius: 3px;
+    letter-spacing: 0.1em;
+    border: 1.5px solid var(--ink);
+    filter: url(#sk-rough);
+    z-index: 2;
+  }
+  .flow-strip {
+    display: flex; align-items: stretch; gap: 12px;
+    overflow-x: auto; padding-bottom: 8px;
+  }
+  .flow-step {
+    position: relative;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .flow-arrow {
+    align-self: center;
+    font-family: var(--font-hand); font-size: 28px;
+    color: var(--accent);
+    padding: 0 4px;
+  }
+  .tab-subtab {
+    display: flex; gap: 6px; margin: 16px 0 12px;
+  }
+  .subtab {
+    padding: 5px 12px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    border: 1.8px solid var(--ink);
+    border-radius: 20px;
+    cursor: pointer;
+    background: var(--paper);
+    filter: url(#sk-rough);
+  }
+  .subtab.active { background: var(--ink); color: var(--paper); }
+  .sub-pane { display: none; }
+  .sub-pane.active { display: block; animation: fadein 0.2s ease; }
+  .page-step-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .single-frame {
+    max-width: 980px;
+  }
+  .flow-frame {
+    flex-shrink: 0;
+  }
+  .flow-frame .var-frame {
+    width: 320px;
+    min-height: 600px;
+    border-radius: 36px;
+    padding: 26px 14px 24px;
+    border-width: 3px;
+    position: relative;
+  }
+  .flow-frame .var-frame::before {
+    content: "";
+    position: absolute;
+    top: 6px; left: 50%;
+    transform: translateX(-50%);
+    width: 80px; height: 6px;
+    background: var(--ink);
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body data-wobble="0" data-color="on" data-density="normal">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="sk-rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="4" />
+      <feDisplacementMap in="SourceGraphic" scale="0" />
+    </filter>
+  </defs>
+</svg>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div>
+      <div style="line-height:1">SwingMaster</div>
+      <div class="label-mono" style="font-size:9px; margin-top:2px">Selected direction · 10 screens · Final</div>
+    </div>
+  </div>
+  <div class="meta">
+    <a href="explore.html" style="color: var(--pencil); text-decoration: none; border-bottom: 1.5px dashed var(--pencil);">← 전체 탐색안 (3 variations) 보기</a>
+  </div>
+</div>
+
+<div class="tabbar" id="tabbar">
+  <div class="tab-section-label">PC / Tablet</div>
+  <div class="tab active" data-page="home"><span class="tab-num">01</span>홈/대시보드</div>
+  <div class="tab" data-page="upload"><span class="tab-num">02</span>영상 업로드</div>
+  <div class="tab" data-page="seven"><span class="tab-num">03</span>7단계 분석</div>
+  <div class="tab" data-page="detail"><span class="tab-num">04</span>상세 진단/코칭</div>
+  <a class="tab" href="detail.html" style="background: #fffbe0; border-color: #d4b800; color: #5a4500; text-decoration: none;"><span class="tab-num" style="background:#d4b800; color:#000">★</span>상세 진단 <em style="font-style:normal; font-weight:700">Hi-Fi 프로토타입</em> →</a>
+  <div class="tab" data-page="history"><span class="tab-num">05</span>진행 기록</div>
+
+  <div class="tab-section-label">Mobile</div>
+  <div class="tab" data-page="capture"><span class="tab-num">06</span>실시간 촬영</div>
+  <a class="tab" href="capture.html" style="background: #fffbe0; border-color: #d4b800; color: #5a4500; text-decoration: none;"><span class="tab-num" style="background:#d4b800; color:#000">★</span>실시간 촬영 <em style="font-style:normal; font-weight:700">Hi-Fi 프로토타입</em> →</a>
+  <div class="tab" data-page="mresult"><span class="tab-num">07</span>간단 분석</div>
+  <a class="tab" href="mobile.html" style="background: #fffbe0; border-color: #d4b800; color: #5a4500; text-decoration: none;"><span class="tab-num" style="background:#d4b800; color:#000">★</span>모바일 전체 흐름 <em style="font-style:normal; font-weight:700">Hi-Fi 5-screen</em> →</a>
+
+  <div class="tab-section-label">Common</div>
+  <div class="tab" data-page="drills"><span class="tab-num">08</span>드릴 가이드</div>
+  <a class="tab" href="drill.html" style="background: #fffbe0; border-color: #d4b800; color: #5a4500; text-decoration: none;"><span class="tab-num" style="background:#d4b800; color:#000">★</span>드릴 상세 <em style="font-style:normal; font-weight:700">Hi-Fi</em> →</a>
+  <div class="tab" data-page="onboard"><span class="tab-num">09</span>온보딩</div>
+  <div class="tab" data-page="profile"><span class="tab-num">10</span>설정/프로필</div>
+
+  <div class="tab-section-label">Hi-Fi 확장</div>
+  <a class="tab" href="compare.html" style="background: #fffbe0; border-color: #d4b800; color: #5a4500; text-decoration: none;"><span class="tab-num" style="background:#d4b800; color:#000">★</span>비교 모드 <em style="font-style:normal; font-weight:700">전/후 · vs 프로</em> →</a>
+  <a class="tab" href="coach.html" style="background: #fffbe0; border-color: #d4b800; color: #5a4500; text-decoration: none;"><span class="tab-num" style="background:#d4b800; color:#000">★</span>AI 코치 채팅 →</a>
+  <a class="tab" href="progress.html" style="background: #fffbe0; border-color: #d4b800; color: #5a4500; text-decoration: none;"><span class="tab-num" style="background:#d4b800; color:#000">★</span>진행률 대시보드 →</a>
+</div>
+
+<div class="shell">
+  <div id="page-home" class="page active"></div>
+  <div id="page-upload" class="page"></div>
+  <div id="page-seven" class="page"></div>
+  <div id="page-detail" class="page"></div>
+  <div id="page-history" class="page"></div>
+  <div id="page-capture" class="page"></div>
+  <div id="page-mresult" class="page"></div>
+  <div id="page-drills" class="page"></div>
+  <div id="page-onboard" class="page"></div>
+  <div id="page-profile" class="page"></div>
+</div>
+
+<div class="tweak-panel" id="tweakPanel">
+  <h4>
+    <span class="hand" style="font-size:22px">Tweaks</span>
+    <button id="tweakClose" class="sk-btn small" style="filter:none; box-shadow:none">×</button>
+  </h4>
+  <div class="tweak-row">
+    <label>스케치 강도 <span class="val" id="wobbleVal">깔끔</span></label>
+    <input type="range" id="wobbleSlider" min="0" max="2" step="1" value="0">
+    <div class="row jb tiny muted" style="margin-top:2px"><span>깔끔</span><span>거친</span></div>
+  </div>
+  <div class="tweak-row">
+    <label>컬러 강조</label>
+    <select id="colorToggle">
+      <option value="on">On — 컬러 포함</option>
+      <option value="off">Off — B&W 와이어</option>
+    </select>
+  </div>
+  <div class="tweak-row">
+    <label>밀도</label>
+    <select id="densityToggle">
+      <option value="normal">Normal</option>
+      <option value="tight">Tight</option>
+      <option value="loose">Loose</option>
+    </select>
+  </div>
+  <div style="font-family: var(--font-mono); font-size: 10px; color: var(--pencil); padding-top: 8px; border-top: 1px dashed var(--rule); line-height: 1.5">
+    키보드: 1–0으로 탭 이동
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="components/shared.jsx"></script>
+<script type="text/babel" src="components/page-home.jsx"></script>
+<script type="text/babel" src="components/page-upload.jsx"></script>
+<script type="text/babel" src="components/page-seven.jsx"></script>
+<script type="text/babel" src="components/page-detail.jsx"></script>
+<script type="text/babel" src="components/page-history.jsx"></script>
+<script type="text/babel" src="components/page-capture.jsx"></script>
+<script type="text/babel" src="components/page-mresult.jsx"></script>
+<script type="text/babel" src="components/page-drills.jsx"></script>
+<script type="text/babel" src="components/page-onboard.jsx"></script>
+<script type="text/babel" src="components/page-profile.jsx"></script>
+<script type="text/babel" src="components/final-pages.jsx"></script>
+
+<script type="text/babel">
+  const PAGES = {
+    home: window.FinalHome,
+    upload: window.FinalUpload,
+    seven: window.FinalSeven,
+    detail: window.FinalDetail,
+    history: window.FinalHistory,
+    capture: window.FinalCapture,
+    mresult: window.FinalMResult,
+    drills: window.FinalDrills,
+    onboard: window.FinalOnboard,
+    profile: window.FinalProfile,
+  };
+
+  Object.entries(PAGES).forEach(([key, Comp]) => {
+    const el = document.getElementById('page-' + key);
+    if (el && Comp) ReactDOM.createRoot(el).render(<Comp />);
+  });
+
+  const tabs = document.querySelectorAll('.tab');
+  const setPage = (key) => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === key));
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
+    try { localStorage.setItem('sm_tab_final', key); } catch {}
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  tabs.forEach(t => t.addEventListener('click', () => setPage(t.dataset.page)));
+  try {
+    const saved = localStorage.getItem('sm_tab_final');
+    if (saved && PAGES[saved]) setPage(saved);
+  } catch {}
+
+  const order = ['home','upload','seven','detail','history','capture','mresult','drills','onboard','profile'];
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    const n = parseInt(e.key, 10);
+    if (!isNaN(n)) {
+      const idx = n === 0 ? 9 : n - 1;
+      if (order[idx]) setPage(order[idx]);
+    }
+  });
+</script>
+
+<script>
+(function(){
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "wobble": 0,
+    "color": "on",
+    "density": "normal"
+  }/*EDITMODE-END*/;
+  const state = Object.assign({}, TWEAK_DEFAULTS);
+  const panel = document.getElementById('tweakPanel');
+  const wobbleSlider = document.getElementById('wobbleSlider');
+  const wobbleVal = document.getElementById('wobbleVal');
+  const colorToggle = document.getElementById('colorToggle');
+  const densityToggle = document.getElementById('densityToggle');
+  const closeBtn = document.getElementById('tweakClose');
+
+  function apply() {
+    document.body.dataset.wobble = String(state.wobble);
+    document.body.dataset.color = state.color;
+    document.body.dataset.density = state.density;
+    wobbleVal.textContent = ['깔끔','normal','거친'][state.wobble] || 'normal';
+    const filter = document.querySelector('#sk-rough feDisplacementMap');
+    if (filter) filter.setAttribute('scale', state.wobble === 0 ? '0' : state.wobble === 2 ? '3.2' : '1.8');
+  }
+  function set(partial) {
+    Object.assign(state, partial);
+    apply();
+    try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits: partial }, '*'); } catch {}
+  }
+  wobbleSlider.value = state.wobble;
+  colorToggle.value = state.color;
+  densityToggle.value = state.density;
+  wobbleSlider.addEventListener('input', e => set({ wobble: parseInt(e.target.value, 10) }));
+  colorToggle.addEventListener('change', e => set({ color: e.target.value }));
+  densityToggle.addEventListener('change', e => set({ density: e.target.value }));
+  closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+  apply();
+  window.addEventListener('message', (e) => {
+    if (!e.data || typeof e.data !== 'object') return;
+    if (e.data.type === '__activate_edit_mode') panel.classList.add('open');
+    if (e.data.type === '__deactivate_edit_mode') panel.classList.remove('open');
+  });
+  try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch {}
+})();
+</script>
+
+</body>
+</html>

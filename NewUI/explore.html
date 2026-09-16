@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · Wireframes</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Kalam:wght@400;700&family=Patrick+Hand&family=Architects+Daughter&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/wireframe.css">
+</head>
+<body data-wobble="1" data-color="on" data-density="normal">
+
+<!-- Sketchy SVG filter (used via filter: url(#sk-rough)) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="sk-rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="4" />
+      <feDisplacementMap in="SourceGraphic" scale="1.8" />
+    </filter>
+    <filter id="sk-rough-strong" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="9" />
+      <feDisplacementMap in="SourceGraphic" scale="3.2" />
+    </filter>
+  </defs>
+</svg>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div>
+      <div style="line-height:1">SwingMaster</div>
+      <div class="label-mono" style="font-size:9px; margin-top:2px">Wireframe exploration · v1</div>
+    </div>
+  </div>
+  <div class="meta">
+    <span>9 screens</span>
+    <span>·</span>
+    <span>3 variations each</span>
+    <span>·</span>
+    <span>PC + Tablet + Mobile</span>
+  </div>
+</div>
+
+<!-- Tab bar -->
+<div class="tabbar" id="tabbar">
+  <div class="tab-section-label">PC / Tablet</div>
+  <div class="tab active" data-page="home"><span class="tab-num">01</span>홈/대시보드</div>
+  <div class="tab" data-page="upload"><span class="tab-num">02</span>영상 업로드</div>
+  <div class="tab" data-page="seven"><span class="tab-num">03</span>7단계 분석</div>
+  <div class="tab" data-page="detail"><span class="tab-num">04</span>상세 진단/코칭</div>
+  <div class="tab" data-page="history"><span class="tab-num">05</span>진행 기록</div>
+
+  <div class="tab-section-label">Mobile</div>
+  <div class="tab" data-page="capture"><span class="tab-num">06</span>실시간 촬영</div>
+  <div class="tab" data-page="mresult"><span class="tab-num">07</span>간단 분석 결과</div>
+
+  <div class="tab-section-label">Common</div>
+  <div class="tab" data-page="drills"><span class="tab-num">08</span>드릴 가이드</div>
+  <div class="tab" data-page="onboard"><span class="tab-num">09</span>온보딩</div>
+  <div class="tab" data-page="profile"><span class="tab-num">10</span>설정/프로필</div>
+</div>
+
+<div class="shell">
+  <!-- Pages mount here -->
+  <div id="page-home" class="page active"></div>
+  <div id="page-upload" class="page"></div>
+  <div id="page-seven" class="page"></div>
+  <div id="page-detail" class="page"></div>
+  <div id="page-history" class="page"></div>
+  <div id="page-capture" class="page"></div>
+  <div id="page-mresult" class="page"></div>
+  <div id="page-drills" class="page"></div>
+  <div id="page-onboard" class="page"></div>
+  <div id="page-profile" class="page"></div>
+</div>
+
+<!-- Tweaks panel -->
+<div class="tweak-panel" id="tweakPanel">
+  <h4>
+    <span class="hand" style="font-size:22px">Tweaks</span>
+    <button id="tweakClose" class="sk-btn small" style="filter:none; box-shadow:none">×</button>
+  </h4>
+
+  <div class="tweak-row">
+    <label>스케치 강도 <span class="val" id="wobbleVal">normal</span></label>
+    <input type="range" id="wobbleSlider" min="0" max="2" step="1" value="1">
+    <div class="row jb tiny muted" style="margin-top:2px">
+      <span>깔끔</span><span>거친</span>
+    </div>
+  </div>
+
+  <div class="tweak-row">
+    <label>컬러 강조</label>
+    <select id="colorToggle">
+      <option value="on">On — 컬러 포함</option>
+      <option value="off">Off — B&W 와이어</option>
+    </select>
+  </div>
+
+  <div class="tweak-row">
+    <label>레이블 언어</label>
+    <select id="langToggle">
+      <option value="ko">한국어</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+
+  <div class="tweak-row">
+    <label>밀도</label>
+    <select id="densityToggle">
+      <option value="normal">Normal</option>
+      <option value="tight">Tight (조밀)</option>
+      <option value="loose">Loose (여유)</option>
+    </select>
+  </div>
+
+  <div style="font-family: var(--font-mono); font-size: 10px; color: var(--pencil); padding-top: 8px; border-top: 1px dashed var(--rule); line-height: 1.5">
+    툴바 Tweaks 토글 → 이 패널.<br>키보드: 1–0으로 탭 이동.
+  </div>
+</div>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Shared primitives -->
+<script type="text/babel" src="components/shared.jsx"></script>
+
+<!-- Page components -->
+<script type="text/babel" src="components/page-home.jsx"></script>
+<script type="text/babel" src="components/page-upload.jsx"></script>
+<script type="text/babel" src="components/page-seven.jsx"></script>
+<script type="text/babel" src="components/page-detail.jsx"></script>
+<script type="text/babel" src="components/page-history.jsx"></script>
+<script type="text/babel" src="components/page-capture.jsx"></script>
+<script type="text/babel" src="components/page-mresult.jsx"></script>
+<script type="text/babel" src="components/page-drills.jsx"></script>
+<script type="text/babel" src="components/page-onboard.jsx"></script>
+<script type="text/babel" src="components/page-profile.jsx"></script>
+
+<!-- Mount + tabs + tweaks -->
+<script type="text/babel">
+  const PAGES = {
+    home: window.PageHome,
+    upload: window.PageUpload,
+    seven: window.PageSeven,
+    detail: window.PageDetail,
+    history: window.PageHistory,
+    capture: window.PageCapture,
+    mresult: window.PageMResult,
+    drills: window.PageDrills,
+    onboard: window.PageOnboard,
+    profile: window.PageProfile,
+  };
+
+  Object.entries(PAGES).forEach(([key, Comp]) => {
+    const el = document.getElementById('page-' + key);
+    if (el && Comp) ReactDOM.createRoot(el).render(<Comp />);
+  });
+
+  // Tabs
+  const tabs = document.querySelectorAll('.tab');
+  const setPage = (key) => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === key));
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
+    try { localStorage.setItem('sm_tab', key); } catch {}
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  tabs.forEach(t => t.addEventListener('click', () => setPage(t.dataset.page)));
+
+  // Restore last tab
+  try {
+    const saved = localStorage.getItem('sm_tab');
+    if (saved && PAGES[saved]) setPage(saved);
+  } catch {}
+
+  // Keyboard shortcuts 1–0
+  const order = ['home','upload','seven','detail','history','capture','mresult','drills','onboard','profile'];
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    const n = parseInt(e.key, 10);
+    if (!isNaN(n)) {
+      const idx = n === 0 ? 9 : n - 1;
+      if (order[idx]) setPage(order[idx]);
+    }
+  });
+</script>
+
+<!-- Edit mode (Tweaks panel) -->
+<script>
+(function(){
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "wobble": 0,
+    "color": "on",
+    "lang": "ko",
+    "density": "normal"
+  }/*EDITMODE-END*/;
+
+  const state = Object.assign({}, TWEAK_DEFAULTS);
+  const panel = document.getElementById('tweakPanel');
+  const wobbleSlider = document.getElementById('wobbleSlider');
+  const wobbleVal = document.getElementById('wobbleVal');
+  const colorToggle = document.getElementById('colorToggle');
+  const langToggle = document.getElementById('langToggle');
+  const densityToggle = document.getElementById('densityToggle');
+  const closeBtn = document.getElementById('tweakClose');
+
+  function apply() {
+    document.body.dataset.wobble = String(state.wobble);
+    document.body.dataset.color = state.color;
+    document.body.dataset.lang = state.lang;
+    document.body.dataset.density = state.density;
+    wobbleVal.textContent = ['깔끔','normal','거친'][state.wobble] || 'normal';
+    // swap sketch filter scale
+    const filter = document.querySelector('#sk-rough feDisplacementMap');
+    if (filter) filter.setAttribute('scale', state.wobble === 0 ? '0' : state.wobble === 2 ? '3.2' : '1.8');
+    // broadcast to React components (for label swaps)
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: { ...state } }));
+  }
+
+  function set(partial) {
+    Object.assign(state, partial);
+    apply();
+    try {
+      window.parent.postMessage({ type: '__edit_mode_set_keys', edits: partial }, '*');
+    } catch {}
+  }
+
+  wobbleSlider.value = state.wobble;
+  colorToggle.value = state.color;
+  langToggle.value = state.lang;
+  densityToggle.value = state.density;
+
+  wobbleSlider.addEventListener('input', e => set({ wobble: parseInt(e.target.value, 10) }));
+  colorToggle.addEventListener('change', e => set({ color: e.target.value }));
+  langToggle.addEventListener('change', e => set({ lang: e.target.value }));
+  densityToggle.addEventListener('change', e => set({ density: e.target.value }));
+  closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+  apply();
+
+  // Edit-mode protocol
+  window.addEventListener('message', (e) => {
+    if (!e.data || typeof e.data !== 'object') return;
+    if (e.data.type === '__activate_edit_mode') panel.classList.add('open');
+    if (e.data.type === '__deactivate_edit_mode') panel.classList.remove('open');
+  });
+  try {
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+  } catch {}
+})();
+</script>
+
+</body>
+</html>

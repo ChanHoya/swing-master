@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · 상세 진단 (Hi-Fi)</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg-2: #11141a;
+    --bg-3: #181c24;
+    --bg-4: #20242e;
+    --card: #1a1f27;
+    --line: rgba(255,255,255,0.08);
+    --line-2: rgba(255,255,255,0.14);
+    --line-3: rgba(255,255,255,0.22);
+    --text: #f5f5f0;
+    --text-2: #b8bdc7;
+    --text-3: #6b7280;
+    --text-4: #4a505b;
+    --accent: #d4ff3a;
+    --accent-dim: rgba(212,255,58,0.15);
+    --accent-glow: rgba(212,255,58,0.3);
+    --danger: #ff5a47;
+    --danger-dim: rgba(255,90,71,0.12);
+    --warn: #ffb84d;
+    --warn-dim: rgba(255,184,77,0.12);
+    --ok: #4dd68a;
+    --ok-dim: rgba(77,214,138,0.12);
+    --blue: #5aa9ff;
+    --blue-dim: rgba(90,169,255,0.12);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #05070a;
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 0% 0%, rgba(212,255,58,0.04), transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(90,169,255,0.04), transparent 40%),
+      #05070a;
+  }
+
+  .app {
+    max-width: 1440px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--bg);
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 240px 1fr;
+  }
+
+  /* ---- Sidebar ---- */
+  .sidebar {
+    border-right: 1px solid var(--line);
+    padding: 24px 16px;
+    display: flex; flex-direction: column;
+    gap: 4px;
+  }
+  .brand {
+    padding: 4px 12px 28px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand-mark {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #0a0c10;
+    display: grid; place-items: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .brand-name {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .brand-name .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .nav-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-4);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 12px 12px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { background: var(--bg-2); color: var(--text); }
+  .nav-item.active { background: var(--bg-3); color: var(--text); }
+  .nav-item.active::before {
+    content: "";
+    width: 3px; height: 14px; background: var(--accent); border-radius: 2px;
+    margin-left: -12px; margin-right: -1px;
+  }
+
+  /* ---- Main ---- */
+  .main {
+    padding: 24px 32px 64px;
+    min-width: 0;
+  }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .crumb {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+    color: var(--text-3);
+  }
+  .crumb a { color: var(--text-3); text-decoration: none; }
+  .crumb a:hover { color: var(--text-2); }
+  .crumb .sep { color: var(--text-4); }
+  .crumb .now { color: var(--text); font-weight: 600; }
+  .topbar-actions {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .btn {
+    padding: 8px 14px;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--line-3); background: var(--bg-2); }
+  .btn.primary {
+    background: var(--accent);
+    color: #0a0c10;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: #c4f028; border-color: #c4f028; }
+  .btn.icon { padding: 8px; }
+
+  /* ---- Header block ---- */
+  .header-block {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: end;
+    margin-bottom: 24px;
+  }
+  .session-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .h1 {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    margin: 0;
+  }
+  .h1 .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .header-stats {
+    display: flex; gap: 24px;
+    padding: 16px 24px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .h-stat .val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 1;
+  }
+  .h-stat .val.hi { color: var(--accent); }
+  .h-stat .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .h-stat .delta {
+    font-size: 11px;
+    color: var(--ok);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  /* ---- Layout grid ---- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+  }
+
+  /* ---- Card ---- */
+  .card {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .card-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ---- Video viewer ---- */
+  .viewer {
+    background: linear-gradient(180deg, #0e1218 0%, #050810 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    margin-bottom: 20px;
+  }
+  .viewer-stage {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background:
+      radial-gradient(ellipse at 50% 60%, #1a2434 0%, #0a0e14 60%, #050810 100%);
+    overflow: hidden;
+  }
+  .viewer-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .pose-stage {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 360px; height: 90%;
+    display: grid; place-items: center;
+  }
+  .pose-svg { width: 100%; height: 100%; }
+
+  /* impact axis annotation */
+  .axis-ann {
+    position: absolute;
+    top: 40%;
+    left: 52%;
+    width: 80px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.85;
+  }
+  .axis-ann::after {
+    content: "1.7cm ↑";
+    position: absolute;
+    right: -90px; top: -8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(10,12,16,0.9);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(212,255,58,0.4);
+    white-space: nowrap;
+  }
+
+  .viewer-overlay-tl {
+    position: absolute;
+    top: 16px; left: 16px;
+    display: flex; gap: 8px;
+  }
+  .viewer-overlay-tr {
+    position: absolute;
+    top: 16px; right: 16px;
+    display: flex; gap: 8px;
+  }
+  .viewer-overlay-bl {
+    position: absolute;
+    bottom: 16px; left: 16px;
+    display: flex; gap: 8px;
+  }
+  .ov-chip {
+    padding: 6px 12px;
+    background: rgba(10,12,16,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text-2);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .ov-chip.hot {
+    color: var(--accent);
+    border-color: rgba(212,255,58,0.4);
+  }
+  .ov-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .viewer-controls {
+    padding: 14px 18px;
+    background: var(--bg-2);
+    border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .play-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: #0a0c10;
+    flex-shrink: 0;
+  }
+  .play-btn:hover { background: #c4f028; }
+  .scrubber {
+    flex: 1;
+    position: relative;
+    height: 36px;
+  }
+  .scrub-bar {
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    transform: translateY(-50%);
+    height: 4px;
+    background: var(--bg-4);
+    border-radius: 2px;
+  }
+  .scrub-progress {
+    position: absolute;
+    left: 0; top: 0; height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 66%;
+  }
+  .scrub-marker {
+    position: absolute;
+    top: -4px; bottom: -4px;
+    width: 2px;
+    background: var(--text-3);
+    border-radius: 1px;
+    transform: translateX(-1px);
+  }
+  .scrub-marker.active {
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+  }
+  .scrub-handle {
+    position: absolute;
+    left: 66%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(212,255,58,0.2);
+    cursor: pointer;
+  }
+  .scrub-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    font-feature-settings: 'tnum';
+    flex-shrink: 0;
+    min-width: 80px;
+    text-align: right;
+  }
+
+  /* ---- 7 stage strip ---- */
+  .stage-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+  }
+  .stage-cell {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage-cell:hover {
+    border-color: var(--line-3);
+    transform: translateY(-2px);
+  }
+  .stage-cell.active {
+    background: var(--bg-4);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(212,255,58,0.1);
+  }
+  .stage-cell.alert {
+    border-color: rgba(255,90,71,0.3);
+  }
+  .stage-cell.alert.active {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 1px var(--danger);
+  }
+  .stage-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .stage-cell.active .stage-num { color: var(--accent); }
+  .stage-cell.alert.active .stage-num { color: var(--danger); }
+  .stage-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .stage-pose {
+    height: 70px;
+    display: grid; place-items: center;
+    margin-bottom: 8px;
+  }
+  .stage-score-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .stage-score-val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text);
+  }
+  .stage-cell.alert .stage-score-val { color: var(--danger); }
+  .stage-cell.active .stage-score-val { color: var(--accent); }
+  .stage-cell.alert.active .stage-score-val { color: var(--danger); }
+  .stage-delta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+  }
+  .stage-delta.bad { color: var(--danger); }
+  .stage-delta.good { color: var(--ok); }
+
+  /* ---- Metrics ---- */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .metric {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .metric-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .metric-name {
+    font-size: 11px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  .metric-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    padding: 2px 6px;
+    border-radius: 100px;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .metric-tag.ok { background: var(--ok-dim); color: var(--ok); }
+  .metric-tag.warn { background: var(--warn-dim); color: var(--warn); }
+  .metric-tag.bad { background: var(--danger-dim); color: var(--danger); }
+  .metric-val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .metric-bar {
+    margin-top: 8px;
+    height: 4px;
+    background: var(--bg-4);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-bar-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    background: var(--ok);
+    border-radius: 2px;
+  }
+  .metric-bar-fill.warn { background: var(--warn); }
+  .metric-bar-fill.bad { background: var(--danger); }
+  .metric-target {
+    position: absolute;
+    top: -3px; bottom: -3px;
+    width: 1.5px;
+    background: var(--text-2);
+  }
+  .metric-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    margin-top: 4px;
+  }
+
+  /* ---- AI coach ---- */
+  .coach-card {
+    background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .coach-head {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .coach-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #8fc01e);
+    display: grid; place-items: center;
+    color: #0a0c10;
+    font-weight: 800;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 16px;
+    position: relative;
+  }
+  .coach-avatar::after {
+    content: "";
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 10px; height: 10px;
+    background: var(--ok);
+    border-radius: 50%;
+    border: 2px solid var(--bg-2);
+  }
+  .coach-name {
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .coach-name .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .coach-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 2px;
+    letter-spacing: 0.04em;
+  }
+  .coach-action {
+    margin-left: auto;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: var(--text-2);
+  }
+  .coach-action:hover { background: var(--bg-3); color: var(--text); }
+
+  .msg {
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+  .msg.ok {
+    background: var(--ok-dim);
+    border: 1px solid rgba(77,214,138,0.2);
+  }
+  .msg.bad {
+    background: var(--danger-dim);
+    border: 1px solid rgba(255,90,71,0.2);
+  }
+  .msg.plan {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+  }
+  .msg-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .msg.ok .msg-tag { color: var(--ok); }
+  .msg.bad .msg-tag { color: var(--danger); }
+  .msg.plan .msg-tag { color: var(--text-3); }
+  .msg b { color: var(--accent); font-weight: 700; }
+  .msg.ok b { color: var(--ok); }
+  .msg.bad b { color: var(--danger); }
+  .msg .hl {
+    background: var(--accent-dim);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .msg ul {
+    margin: 6px 0 0; padding-left: 20px;
+    color: var(--text-2);
+    font-size: 12px;
+  }
+  .msg ul li { margin: 4px 0; }
+
+  .plan-list {
+    display: flex; flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .plan-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .plan-num {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #0a0c10;
+    display: grid; place-items: center;
+    font-weight: 800;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .plan-text { flex: 1; color: var(--text); font-weight: 500; }
+  .plan-when {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+
+  .coach-feedback {
+    display: flex; gap: 6px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .fb-btn {
+    flex: 1;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .fb-btn:hover { border-color: var(--line-3); color: var(--text); }
+  .fb-btn.ask {
+    background: var(--accent);
+    color: #0a0c10;
+    border-color: var(--accent);
+    flex: 1.4;
+  }
+  .fb-btn.ask:hover { background: #c4f028; }
+
+  /* ---- Drill recommendation cards ---- */
+  .drill-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 8px;
+  }
+  .drill-card:hover {
+    border-color: var(--accent);
+    background: var(--bg-4);
+  }
+  .drill-thumb {
+    width: 64px; height: 64px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1a2030, #0e1218);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+  }
+  .drill-info { flex: 1; min-width: 0; }
+  .drill-name {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .drill-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+  .drill-arrow {
+    color: var(--text-3);
+  }
+  .drill-card:hover .drill-arrow { color: var(--accent); }
+
+  /* ---- Pro overlay banner ---- */
+  .pro-banner {
+    background: linear-gradient(135deg, rgba(90,169,255,0.08), rgba(212,255,58,0.05));
+    border: 1px solid rgba(90,169,255,0.2);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 16px;
+  }
+  .pro-banner-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--blue-dim);
+    border: 1px solid rgba(90,169,255,0.3);
+    display: grid; place-items: center;
+    color: var(--blue);
+    flex-shrink: 0;
+  }
+  .pro-banner-text {
+    flex: 1;
+  }
+  .pro-banner-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .pro-banner-sub {
+    font-size: 11px;
+    color: var(--text-2);
+  }
+
+  /* ---- Section title ---- */
+  .section-title {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 8px 0 14px;
+  }
+  .section-title h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .section-title .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+  }
+
+  /* ---- Right column ---- */
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ---- Footer link back ---- */
+  .footer {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .footer a {
+    color: var(--text-2);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line-2);
+    padding-bottom: 1px;
+  }
+  .footer a:hover { color: var(--accent); border-color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============= SIDEBAR ============= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div>
+        <div class="brand-name">Swing<span class="em">Master</span></div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-4); letter-spacing:0.08em; margin-top:2px">v2.0 BETA</div>
+      </div>
+    </div>
+
+    <div class="nav-label">Practice</div>
+    <div class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      대시보드
+    </div>
+    <div class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      촬영 / 업로드
+    </div>
+    <div class="nav-item active">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a2 2 0 0 0-2 2v7h6V11zM15 5h-6v15h6V5zM21 8h-4v12h4V8z"/></svg>
+      분석 리포트
+    </div>
+    <div class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      진행 기록
+    </div>
+    <div class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      드릴 라이브러리
+    </div>
+
+    <div class="nav-label">Coach</div>
+    <div class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      AI 코치 채팅
+    </div>
+    <div class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      프로 비교
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div style="padding: 12px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 12px; margin-top: 16px;">
+      <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-3); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px">금주 목표</div>
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">템포 B → A</div>
+      <div style="height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden;">
+        <div style="height:100%; width: 65%; background: var(--accent); border-radius: 2px;"></div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-2); margin-top:6px; display:flex; justify-content:space-between;">
+        <span>3 / 5 세션</span>
+        <span style="color: var(--accent)">65%</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============= MAIN ============= -->
+  <main class="main">
+
+    <div class="topbar">
+      <div class="crumb">
+        <a href="index.html">와이어프레임</a>
+        <span class="sep">/</span>
+        <a href="capture.html">실시간 촬영</a>
+        <span class="sep">/</span>
+        <span class="now">상세 진단 리포트</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn icon" title="공유">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke-linecap="round"/></svg>
+        </button>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          PDF
+        </button>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke-linecap="round"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9" stroke-linecap="round"/></svg>
+          코치에게 공유
+        </button>
+        <button class="btn primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          드릴 시작
+        </button>
+      </div>
+    </div>
+
+    <div class="header-block">
+      <div>
+        <div class="session-meta">2026.04.19 · SESSION #047 · 7 IRON</div>
+        <h1 class="h1">스윙 <span class="em">진단</span> 리포트</h1>
+      </div>
+      <div class="header-stats">
+        <div class="h-stat">
+          <div class="val hi">78</div>
+          <div class="lbl">Score</div>
+          <div class="delta">↑ +3 vs 평균</div>
+        </div>
+        <div class="h-stat">
+          <div class="val">B</div>
+          <div class="lbl">Grade</div>
+          <div class="delta">A까지 4점</div>
+        </div>
+        <div class="h-stat">
+          <div class="val">3</div>
+          <div class="lbl">교정 포인트</div>
+          <div class="delta" style="color: var(--text-3)">2 심각 · 1 주의</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TWO COL GRID ============ -->
+    <div class="grid">
+
+      <!-- ===== LEFT: viewer + 7 stage + metrics ===== -->
+      <div>
+
+        <div class="viewer">
+          <div class="viewer-stage">
+            <div class="viewer-grid"></div>
+
+            <!-- Pose silhouette w/ overlay -->
+            <div class="pose-stage">
+              <svg class="pose-svg" viewBox="0 0 200 280" fill="none">
+                <!-- spine axis (target) -->
+                <line x1="100" y1="40" x2="100" y2="260" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+                <!-- ground -->
+                <line x1="20" y1="270" x2="180" y2="270" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                <!-- ghost pose (target) -->
+                <g opacity="0.25" stroke="#5aa9ff" stroke-width="1.5" fill="none" stroke-linecap="round">
+                  <circle cx="100" cy="36" r="13"/>
+                  <path d="M100 49 L100 140 M100 80 L70 105 L60 145 M100 80 L130 105 L150 130 M100 140 L84 200 L74 268 M100 140 L116 200 L126 268"/>
+                </g>
+                <!-- actual pose (impact, slight sway) -->
+                <g stroke="#d4ff3a" stroke-width="2.2" fill="none" stroke-linecap="round">
+                  <circle cx="112" cy="38" r="13" stroke-width="2.2"/>
+                  <path d="M112 51 L108 142"/>
+                  <path d="M108 80 L78 110 L66 150"/>
+                  <path d="M108 80 L142 100 L168 75"/>
+                  <path d="M168 75 L195 50" stroke-width="1.6" opacity="0.7"/>
+                  <path d="M108 142 L94 202 L82 268"/>
+                  <path d="M108 142 L122 202 L130 268"/>
+                </g>
+                <!-- joint markers -->
+                <g fill="#d4ff3a">
+                  <circle cx="108" cy="80" r="3"/>
+                  <circle cx="108" cy="142" r="3"/>
+                  <circle cx="168" cy="75" r="2.5"/>
+                </g>
+                <!-- impact ball -->
+                <circle cx="146" cy="266" r="4" fill="#fff"/>
+                <!-- sway annotation -->
+                <line x1="100" y1="38" x2="112" y2="38" stroke="#d4ff3a" stroke-width="1" stroke-dasharray="2 2"/>
+              </svg>
+            </div>
+
+            <div class="viewer-overlay-tl">
+              <span class="ov-chip hot"><span class="ov-dot"></span>스테이지 5 · 임팩트</span>
+            </div>
+            <div class="viewer-overlay-tr">
+              <span class="ov-chip">FRAME 142 / 218</span>
+              <span class="ov-chip">7I · DTL</span>
+            </div>
+            <div class="viewer-overlay-bl">
+              <span class="ov-chip">스켈레톤 ON</span>
+              <span class="ov-chip">프로 고스트 ON</span>
+              <span class="ov-chip">축선 ON</span>
+            </div>
+          </div>
+
+          <div class="viewer-controls">
+            <button class="play-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <div class="scrubber">
+              <div class="scrub-bar">
+                <div class="scrub-progress"></div>
+              </div>
+              <!-- 7 stage markers -->
+              <div class="scrub-marker" style="left:0%"></div>
+              <div class="scrub-marker" style="left:14%"></div>
+              <div class="scrub-marker" style="left:28%"></div>
+              <div class="scrub-marker" style="left:42%"></div>
+              <div class="scrub-marker active" style="left:66%"></div>
+              <div class="scrub-marker" style="left:82%"></div>
+              <div class="scrub-marker" style="left:100%"></div>
+              <div class="scrub-handle"></div>
+            </div>
+            <div class="scrub-time">0:01.42 / 0:02.18</div>
+          </div>
+        </div>
+
+        <!-- 7 STAGES -->
+        <div class="section-title">
+          <h3>7단계 분석</h3>
+          <span class="tag">· STAGE-BY-STAGE</span>
+          <div style="margin-left:auto; display:flex; gap: 6px; align-items:center;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color: var(--text-3); letter-spacing: 0.06em;">PRO COMPARE</span>
+            <button style="position:relative; width:32px; height: 18px; background: var(--accent); border: none; border-radius: 100px; cursor:pointer;">
+              <span style="position:absolute; right: 2px; top: 2px; width: 14px; height: 14px; background: #0a0c10; border-radius: 50%;"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="stage-strip" style="margin-bottom: 20px;">
+          <!-- Stage 1: Address (Good) -->
+          <div class="stage-cell">
+            <div class="stage-num">01</div>
+            <div class="stage-name">어드레스</div>
+            <div class="stage-pose">
+              <svg viewBox="0 0 60 80" width="50" height="68">
+                <line x1="30" y1="14" x2="30" y2="74" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <g stroke="#d4ff3a" stroke-width="1.5" fill="none" stroke-linecap="round">
+                  <circle cx="30" cy="12" r="5"/>
+                  <path d="M30 17 L30 42 M30 24 L20 33 M30 24 L40 33 M30 42 L24 60 L21 75 M30 42 L36 60 L39 75"/>
+                  <path d="M40 33 L52 28" stroke-width="1.2"/>
+                </g>
+              </svg>
+            </div>
+            <div class="stage-score-row">
+              <span class="stage-score-val">88</span>
+              <span class="stage-delta good">±1</span>
+            </div>
+          </div>
+
+          <!-- Stage 2: Takeaway (Good) -->
+          <div class="stage-cell">
+            <div class="stage-num">02</div>
+            <div class="stage-name">테이크백</div>
+            <div class="stage-pose">
+              <svg viewBox="0 0 60 80" width="50" height="68">
+                <line x1="30" y1="14" x2="30" y2="74" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <g stroke="#d4ff3a" stroke-width="1.5" fill="none" stroke-linecap="round">
+                  <circle cx="30" cy="12" r="5"/>
+                  <path d="M30 17 L30 42 M30 24 L36 30 L42 22 M30 24 L20 33 M30 42 L24 60 L21 75 M30 42 L36 60 L39 75"/>
+                </g>
+              </svg>
+            </div>
+            <div class="stage-score-row">
+              <span class="stage-score-val">85</span>
+              <span class="stage-delta good">±2</span>
+            </div>
+          </div>
+
+          <!-- Stage 3: Top (Alert) -->
+          <div class="stage-cell alert">
+            <div class="stage-num">03</div>
+            <div class="stage-name">탑</div>
+            <div class="stage-pose">
+              <svg viewBox="0 0 60 80" width="50" height="68">
+                <line x1="30" y1="14" x2="30" y2="74" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <g stroke="#ff5a47" stroke-width="1.5" fill="none" stroke-linecap="round">
+                  <circle cx="30" cy="12" r="5"/>
+                  <path d="M30 17 L30 42 M30 24 L46 18 L52 6 M30 24 L18 14 M30 42 L24 60 L21 75 M30 42 L36 60 L39 75"/>
+                </g>
+              </svg>
+            </div>
+            <div class="stage-score-row">
+              <span class="stage-score-val">68</span>
+              <span class="stage-delta bad">-8°</span>
+            </div>
+          </div>
+
+          <!-- Stage 4: Downswing (Alert) -->
+          <div class="stage-cell alert">
+            <div class="stage-num">04</div>
+            <div class="stage-name">다운스윙</div>
+            <div class="stage-pose">
+              <svg viewBox="0 0 60 80" width="50" height="68">
+                <line x1="30" y1="14" x2="30" y2="74" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <g stroke="#ff5a47" stroke-width="1.5" fill="none" stroke-linecap="round">
+                  <circle cx="32" cy="12" r="5"/>
+                  <path d="M32 17 L30 42 M30 24 L40 28 L48 22 M30 24 L18 26 M30 42 L24 60 L21 75 M30 42 L36 60 L39 75"/>
+                </g>
+              </svg>
+            </div>
+            <div class="stage-score-row">
+              <span class="stage-score-val">71</span>
+              <span class="stage-delta bad">-6°</span>
+            </div>
+          </div>
+
+          <!-- Stage 5: Impact (ACTIVE + Alert) -->
+          <div class="stage-cell alert active">
+            <div class="stage-num">05</div>
+            <div class="stage-name">임팩트</div>
+            <div class="stage-pose">
+              <svg viewBox="0 0 60 80" width="50" height="68">
+                <line x1="30" y1="14" x2="30" y2="74" stroke="rgba(255,90,71,0.3)" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <g stroke="#ff5a47" stroke-width="1.8" fill="none" stroke-linecap="round">
+                  <circle cx="34" cy="12" r="5"/>
+                  <path d="M34 17 L32 42 M32 24 L42 30 L52 22 M32 24 L20 33 M32 42 L26 60 L23 75 M32 42 L38 60 L41 75"/>
+                </g>
+                <circle cx="44" cy="74" r="1.5" fill="#fff"/>
+              </svg>
+            </div>
+            <div class="stage-score-row">
+              <span class="stage-score-val">62</span>
+              <span class="stage-delta bad">1.7cm</span>
+            </div>
+          </div>
+
+          <!-- Stage 6: Follow (Warn) -->
+          <div class="stage-cell">
+            <div class="stage-num">06</div>
+            <div class="stage-name">팔로우</div>
+            <div class="stage-pose">
+              <svg viewBox="0 0 60 80" width="50" height="68">
+                <line x1="30" y1="14" x2="30" y2="74" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <g stroke="#d4ff3a" stroke-width="1.5" fill="none" stroke-linecap="round">
+                  <circle cx="34" cy="12" r="5"/>
+                  <path d="M34 17 L32 42 M32 24 L18 22 L10 14 M32 24 L42 28 M32 42 L26 60 L23 75 M32 42 L38 60 L41 75"/>
+                </g>
+              </svg>
+            </div>
+            <div class="stage-score-row">
+              <span class="stage-score-val">79</span>
+              <span class="stage-delta good">±1</span>
+            </div>
+          </div>
+
+          <!-- Stage 7: Finish (Good) -->
+          <div class="stage-cell">
+            <div class="stage-num">07</div>
+            <div class="stage-name">피니시</div>
+            <div class="stage-pose">
+              <svg viewBox="0 0 60 80" width="50" height="68">
+                <line x1="30" y1="14" x2="30" y2="74" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <g stroke="#d4ff3a" stroke-width="1.5" fill="none" stroke-linecap="round">
+                  <circle cx="36" cy="14" r="5"/>
+                  <path d="M36 19 L32 44 M32 26 L24 18 L18 8 M32 26 L42 20 M32 44 L36 60 L40 75 M32 44 L26 60 L20 70"/>
+                </g>
+              </svg>
+            </div>
+            <div class="stage-score-row">
+              <span class="stage-score-val">90</span>
+              <span class="stage-delta good">±1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- METRICS -->
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">임팩트 순간 지표</div>
+              <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">현재 선택된 프레임 기준</div>
+            </div>
+            <span class="card-sub">FRAME 142</span>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric">
+              <div class="metric-head">
+                <span class="metric-name">척추 각도</span>
+                <span class="metric-tag ok">OK</span>
+              </div>
+              <div class="metric-val">34.4°</div>
+              <div class="metric-bar">
+                <div class="metric-bar-fill" style="width: 70%"></div>
+                <div class="metric-target" style="left: 65%"></div>
+                <div class="metric-target" style="left: 75%"></div>
+              </div>
+              <div class="metric-sub">기준 32~36°</div>
+            </div>
+
+            <div class="metric">
+              <div class="metric-head">
+                <span class="metric-name">템포 비율 (백:다운)</span>
+                <span class="metric-tag bad">교정</span>
+              </div>
+              <div class="metric-val" style="color: var(--danger)">0.8 : 1</div>
+              <div class="metric-bar">
+                <div class="metric-bar-fill bad" style="width: 27%"></div>
+                <div class="metric-target" style="left: 75%"></div>
+              </div>
+              <div class="metric-sub">목표 3 : 1</div>
+            </div>
+
+            <div class="metric">
+              <div class="metric-head">
+                <span class="metric-name">헤드 이탈</span>
+                <span class="metric-tag bad">교정</span>
+              </div>
+              <div class="metric-val" style="color: var(--danger)">1.7 cm</div>
+              <div class="metric-bar">
+                <div class="metric-bar-fill bad" style="width: 85%"></div>
+                <div class="metric-target" style="left: 50%"></div>
+              </div>
+              <div class="metric-sub">기준 &lt; 1.0 cm</div>
+            </div>
+
+            <div class="metric">
+              <div class="metric-head">
+                <span class="metric-name">힙 회전</span>
+                <span class="metric-tag warn">주의</span>
+              </div>
+              <div class="metric-val" style="color: var(--warn)">45°</div>
+              <div class="metric-bar">
+                <div class="metric-bar-fill warn" style="width: 55%"></div>
+                <div class="metric-target" style="left: 80%"></div>
+              </div>
+              <div class="metric-sub">목표 55°</div>
+            </div>
+
+            <div class="metric">
+              <div class="metric-head">
+                <span class="metric-name">어깨 회전</span>
+                <span class="metric-tag ok">OK</span>
+              </div>
+              <div class="metric-val">88°</div>
+              <div class="metric-bar">
+                <div class="metric-bar-fill" style="width: 88%"></div>
+                <div class="metric-target" style="left: 85%"></div>
+                <div class="metric-target" style="left: 95%"></div>
+              </div>
+              <div class="metric-sub">기준 85~95°</div>
+            </div>
+
+            <div class="metric">
+              <div class="metric-head">
+                <span class="metric-name">체중 전환</span>
+                <span class="metric-tag warn">주의</span>
+              </div>
+              <div class="metric-val" style="color: var(--warn)">62%</div>
+              <div class="metric-bar">
+                <div class="metric-bar-fill warn" style="width: 62%"></div>
+                <div class="metric-target" style="left: 80%"></div>
+              </div>
+              <div class="metric-sub">목표 80% (왼발)</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===== RIGHT: Coach + Drills ===== -->
+      <div class="right-col">
+
+        <div class="pro-banner">
+          <div class="pro-banner-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M12 13v9M9 22h6" stroke-linecap="round"/></svg>
+          </div>
+          <div class="pro-banner-text">
+            <div class="pro-banner-title">Rory McIlroy와 비교 중</div>
+            <div class="pro-banner-sub">탑 8° · 다운 6° 차이 발견</div>
+          </div>
+          <button class="btn icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+
+        <div class="coach-card">
+          <div class="coach-head">
+            <div class="coach-avatar">AI</div>
+            <div>
+              <div class="coach-name">Coach <span class="em">GPT</span></div>
+              <div class="coach-sub">분석 완료 · 방금 전</div>
+            </div>
+            <button class="coach-action" title="음성 듣기">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4z" stroke-linecap="round"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          <div class="msg ok">
+            <div class="msg-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              잘한 점
+            </div>
+            오늘 스윙은 <b>피니시 자세가 안정적</b>이에요. 밸런스는 A등급.
+            <ul>
+              <li>그립과 스탠스 정석 · 어드레스 88점</li>
+              <li>어깨 회전 88° · 프로 표준 범위</li>
+            </ul>
+          </div>
+
+          <div class="msg bad">
+            <div class="msg-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+              핵심 이슈
+            </div>
+            가장 큰 문제는 임팩트 때 헤드가 <span class="hl">1.7cm 밀리는 현상</span>이에요.
+            척추가 축이 아니라 <b>전체가 이동</b>하고 있어 — 스웨이 드릴 필요.
+            <ul>
+              <li>탑에서 8° 오버스윙 (Rory 대비)</li>
+              <li>다운스윙 6° 일찍 릴리즈</li>
+            </ul>
+          </div>
+
+          <div class="msg plan">
+            <div class="msg-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              이번 주 플랜
+            </div>
+            예상 효과: <b>2주 후 템포 B → A · 비거리 +8y</b>
+
+            <div class="plan-list">
+              <div class="plan-item">
+                <span class="plan-num">1</span>
+                <span class="plan-text">메트로놈 드릴</span>
+                <span class="plan-when">월·수·금 · 10분</span>
+              </div>
+              <div class="plan-item">
+                <span class="plan-num">2</span>
+                <span class="plan-text">의자 힙턴 드릴</span>
+                <span class="plan-when">화·목 · 15분</span>
+              </div>
+              <div class="plan-item">
+                <span class="plan-num">3</span>
+                <span class="plan-text">발 들고 피니시</span>
+                <span class="plan-when">매일 · 5회</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="coach-feedback">
+            <button class="fb-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+              도움됨
+            </button>
+            <button class="fb-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zM17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+              별로
+            </button>
+            <button class="fb-btn ask">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round"/></svg>
+              더 물어보기
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">추천 드릴 · 3건</div>
+            <span class="card-sub">PRESCRIBED</span>
+          </div>
+
+          <div class="drill-card">
+            <div class="drill-thumb">
+              <svg width="32" height="40" viewBox="0 0 32 40" fill="none">
+                <circle cx="16" cy="8" r="4" stroke="#d4ff3a" stroke-width="1.5"/>
+                <path d="M16 12 L16 26 M16 16 L8 22 M16 16 L24 22 M16 26 L11 38 M16 26 L21 38" stroke="#d4ff3a" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="22" cy="20" r="1.5" fill="#d4ff3a"/>
+              </svg>
+            </div>
+            <div class="drill-info">
+              <div class="drill-name">메트로놈 템포 드릴</div>
+              <div class="drill-meta">10분 · 7번 아이언 · 임팩트 ↑</div>
+            </div>
+            <span class="drill-arrow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </span>
+          </div>
+
+          <div class="drill-card">
+            <div class="drill-thumb">
+              <svg width="32" height="40" viewBox="0 0 32 40" fill="none">
+                <circle cx="14" cy="8" r="4" stroke="#d4ff3a" stroke-width="1.5"/>
+                <path d="M14 12 L16 26 M14 16 L8 22 M14 16 L22 22 M16 26 L11 38 M16 26 L21 38" stroke="#d4ff3a" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="6" y1="32" x2="26" y2="32" stroke="#d4ff3a" stroke-width="1" stroke-dasharray="2 2"/>
+              </svg>
+            </div>
+            <div class="drill-info">
+              <div class="drill-name">의자 힙턴</div>
+              <div class="drill-meta">15분 · 어떤 클럽 · 힙 회전 ↑</div>
+            </div>
+            <span class="drill-arrow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </span>
+          </div>
+
+          <div class="drill-card">
+            <div class="drill-thumb">
+              <svg width="32" height="40" viewBox="0 0 32 40" fill="none">
+                <circle cx="18" cy="8" r="4" stroke="#d4ff3a" stroke-width="1.5"/>
+                <path d="M18 12 L16 26 M16 16 L24 22 M16 16 L8 14 M16 26 L20 38 M16 26 L12 32" stroke="#d4ff3a" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="drill-info">
+              <div class="drill-name">발 들고 피니시</div>
+              <div class="drill-meta">5회 · 매일 · 밸런스 유지</div>
+            </div>
+            <span class="drill-arrow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>
+        <a href="capture.html">← 실시간 촬영으로 돌아가기</a>
+      </div>
+      <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;">
+        SwingMaster v2.0 · 분석 엔진 SM-Vision 2.4 · 신뢰도 96%
+      </div>
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>

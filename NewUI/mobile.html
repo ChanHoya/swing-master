@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · Mobile Full Flow</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg-2: #11141a;
+    --bg-3: #181c24;
+    --bg-4: #20242e;
+    --line: rgba(255,255,255,0.08);
+    --line-2: rgba(255,255,255,0.14);
+    --text: #f5f5f0;
+    --text-2: #b8bdc7;
+    --text-3: #6b7280;
+    --text-4: #4a505b;
+    --accent: #d4ff3a;
+    --accent-dim: rgba(212,255,58,0.15);
+    --danger: #ff5a47;
+    --danger-dim: rgba(255,90,71,0.12);
+    --warn: #ffb84d;
+    --warn-dim: rgba(255,184,77,0.12);
+    --ok: #4dd68a;
+    --ok-dim: rgba(77,214,138,0.12);
+    --blue: #5aa9ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #05070a;
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    padding: 32px 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(212,255,58,0.04), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(90,169,255,0.04), transparent 50%),
+      #05070a;
+  }
+  .header {
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+  }
+  .header h1 .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .header .sub {
+    font-size: 13px; color: var(--text-3);
+  }
+  .controls {
+    display: flex; gap: 6px;
+    background: rgba(20,22,28,0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--line);
+    padding: 6px;
+    border-radius: 100px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ctrl {
+    padding: 8px 14px;
+    border-radius: 100px;
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  .ctrl:hover { color: var(--text); }
+  .ctrl.active { background: var(--accent); color: #0a0c10; }
+
+  .phones-row {
+    display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 52px;
+    border: 9px solid #1a1c22;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 30px 60px rgba(0,0,0,0.7);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .phone::before {
+    content: ""; position: absolute; top: 10px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 32px; background: #000; border-radius: 20px; z-index: 100;
+  }
+  .screen {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  .status-bar {
+    padding: 14px 28px 4px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .status-bar svg { display: block; }
+  .sb-right { display: flex; gap: 5px; align-items: center; }
+
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 90px;
+  }
+  .scroll-area::-webkit-scrollbar { width: 0; }
+
+  /* ---- Bottom tab bar ---- */
+  .tabbar {
+    position: absolute;
+    left: 12px; right: 12px; bottom: 14px;
+    height: 72px;
+    background: rgba(17,20,26,0.9);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 80px 1fr 1fr;
+    align-items: center;
+    padding: 0 12px;
+    z-index: 50;
+  }
+  .tab-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px;
+    color: var(--text-3);
+    cursor: pointer;
+    padding: 8px 4px;
+    border-radius: 12px;
+  }
+  .tab-item:hover { color: var(--text-2); }
+  .tab-item.active { color: var(--accent); }
+  .tab-item .lbl {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .tab-cta {
+    display: grid; place-items: center;
+  }
+  .tab-cta-btn {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #0a0c10;
+    border: 4px solid var(--bg-2);
+    margin-top: -28px;
+    display: grid; place-items: center;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(212,255,58,0.3);
+  }
+
+  /* ============================================================
+     ONBOARDING
+     ============================================================ */
+  .ob {
+    background: var(--bg);
+    height: 100%;
+    padding: 0 28px 32px;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .ob-progress {
+    margin-top: 12px;
+    display: flex; gap: 6px;
+  }
+  .ob-progress span {
+    flex: 1; height: 3px;
+    background: var(--bg-3);
+    border-radius: 2px;
+  }
+  .ob-progress span.active { background: var(--accent); }
+  .ob-progress span.done { background: var(--ok); }
+
+  .ob-skip {
+    position: absolute;
+    top: 14px; right: 24px;
+    color: var(--text-3);
+    font-size: 13px;
+    font-weight: 600;
+    background: none; border: none;
+    cursor: pointer;
+  }
+
+  .ob-hero {
+    margin: 40px 0 28px;
+    text-align: center;
+  }
+  .ob-hero-art {
+    width: 220px; height: 220px;
+    margin: 0 auto 28px;
+    position: relative;
+  }
+  .ob-stage-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .ob-title {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    margin: 0 0 12px;
+  }
+  .ob-title .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .ob-subtitle {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  .ob-options {
+    flex: 1;
+    display: flex; flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .ob-option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px;
+    background: var(--bg-2);
+    border: 1.5px solid var(--line);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ob-option:hover { border-color: var(--line-2); }
+  .ob-option.selected {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+  .ob-option-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--bg-3);
+    display: grid; place-items: center;
+    color: var(--text-2);
+    flex-shrink: 0;
+  }
+  .ob-option.selected .ob-option-icon {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+  .ob-option-text { flex: 1; }
+  .ob-option-name {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .ob-option-desc {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .ob-option-radio {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--line-2);
+    flex-shrink: 0;
+    display: grid; place-items: center;
+  }
+  .ob-option.selected .ob-option-radio {
+    border-color: var(--accent);
+  }
+  .ob-option.selected .ob-option-radio::after {
+    content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+  }
+
+  .ob-cta {
+    margin-top: 16px;
+  }
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #0a0c10;
+    border: none;
+    border-radius: 16px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:hover { background: #c4f028; }
+  .btn-secondary {
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line-2);
+    border-radius: 16px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Permissions screen */
+  .perm-list {
+    display: flex; flex-direction: column;
+    gap: 12px;
+    margin: 24px 0;
+  }
+  .perm-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .perm-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .perm-text { flex: 1; }
+  .perm-name {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .perm-desc {
+    font-size: 12px;
+    color: var(--text-3);
+    line-height: 1.5;
+  }
+
+  /* ============================================================
+     HOME
+     ============================================================ */
+  .home {
+    background: var(--bg);
+    height: 100%;
+  }
+  .home-header {
+    padding: 8px 24px 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .greeting {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .greeting .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .greeting-sub {
+    font-size: 12px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #8fc01e);
+    color: #0a0c10;
+    display: grid; place-items: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .week-card {
+    margin: 18px 24px 16px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(212,255,58,0.12), rgba(212,255,58,0.02));
+    border: 1px solid rgba(212,255,58,0.25);
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .week-card::before {
+    content: "";
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 140px; height: 140px;
+    background: radial-gradient(circle, rgba(212,255,58,0.15), transparent 60%);
+    border-radius: 50%;
+  }
+  .week-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .week-goal {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .week-goal .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .week-sub {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-bottom: 14px;
+  }
+  .week-progress-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .week-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .week-bar-fill {
+    height: 100%; width: 60%;
+    background: var(--accent);
+    border-radius: 3px;
+  }
+  .week-pct {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--accent);
+  }
+
+  .stats-row {
+    margin: 0 24px 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .stat-mini {
+    padding: 12px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    text-align: center;
+  }
+  .stat-mini .v {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .stat-mini .v.hl { color: var(--accent); }
+  .stat-mini .l {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .section-h {
+    padding: 8px 24px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 8px;
+  }
+  .section-h h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .section-h .more {
+    font-size: 12px;
+    color: var(--text-3);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .session-list {
+    padding: 0 24px;
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  .session-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    cursor: pointer;
+  }
+  .session-card:hover { border-color: var(--line-2); }
+  .session-thumb {
+    width: 56px; height: 64px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1a2030, #0e1218);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+  }
+  .session-info { flex: 1; min-width: 0; }
+  .session-name {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .session-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+  .session-score {
+    text-align: right;
+  }
+  .session-score .v {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1;
+  }
+  .session-score .v.hi { color: var(--accent); }
+  .session-score .d {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ok);
+    margin-top: 2px;
+  }
+
+  .drill-suggest {
+    margin: 18px 24px 0;
+    padding: 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .drill-suggest-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .drill-suggest-text { flex: 1; }
+  .drill-suggest-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+    font-weight: 700;
+  }
+  .drill-suggest-name {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .drill-suggest-meta {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  /* ============================================================
+     RESULT (mobile)
+     ============================================================ */
+  .result {
+    background: var(--bg);
+    height: 100%;
+  }
+  .result-top {
+    padding: 8px 24px 0;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--bg-2); }
+
+  .result-title {
+    flex: 1;
+  }
+  .result-title .top {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .result-title .name {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  .score-hero {
+    margin: 24px 24px 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(212,255,58,0.1), rgba(10,12,16,0));
+    border: 1px solid rgba(212,255,58,0.2);
+    border-radius: 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-hero::before {
+    content: "";
+    position: absolute;
+    top: -50%; left: -10%; right: -10%; bottom: 0;
+    background: radial-gradient(ellipse at center, rgba(212,255,58,0.15), transparent 60%);
+    pointer-events: none;
+  }
+  .score-hero .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .score-hero .big {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 84px;
+    line-height: 1;
+    color: var(--accent);
+    text-shadow: 0 4px 30px rgba(212,255,58,0.3);
+  }
+  .score-hero .grade {
+    margin-top: 8px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(212,255,58,0.3);
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+  }
+  .score-hero .delta {
+    font-size: 12px;
+    color: var(--ok);
+    margin-top: 12px;
+    font-weight: 600;
+  }
+
+  .quick-metrics {
+    margin: 0 24px 20px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .qm {
+    padding: 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .qm .l {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .qm .v {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .qm .v.bad { color: var(--danger); }
+  .qm .v.warn { color: var(--warn); }
+  .qm .v.ok { color: var(--ok); }
+  .qm .s {
+    font-size: 10px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .issues-section {
+    margin: 0 24px 20px;
+  }
+  .issue-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--danger);
+  }
+  .issue-card.warn { border-left-color: var(--warn); }
+  .issue-rank {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--danger-dim);
+    color: var(--danger);
+    display: grid; place-items: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .issue-card.warn .issue-rank {
+    background: var(--warn-dim);
+    color: var(--warn);
+  }
+  .issue-content { flex: 1; }
+  .issue-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .issue-desc {
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  .issue-action {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    margin-top: 8px;
+    display: inline-flex; align-items: center; gap: 4px;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .result-cta {
+    padding: 0 24px;
+    display: flex; gap: 8px;
+  }
+
+  /* ============================================================
+     DRILL DETAIL
+     ============================================================ */
+  .drill {
+    background: var(--bg);
+    height: 100%;
+  }
+  .drill-video {
+    aspect-ratio: 9 / 12;
+    margin: 12px 24px 0;
+    background: linear-gradient(180deg, #0e1218 0%, #050810 100%);
+    border-radius: 18px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--line);
+  }
+  .drill-video::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 60%, #1a2434 0%, #0a0e14 60%, #050810 100%);
+  }
+  .drill-video-figure {
+    position: absolute;
+    inset: 0;
+    display: grid; place-items: center;
+  }
+  .drill-overlay-tl {
+    position: absolute; top: 14px; left: 14px;
+    display: flex; gap: 6px;
+  }
+  .drill-overlay-tr {
+    position: absolute; top: 14px; right: 14px;
+  }
+  .ov-pill {
+    padding: 5px 10px;
+    background: rgba(10,12,16,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text-2);
+  }
+  .ov-pill.hot { color: var(--accent); border-color: rgba(212,255,58,0.3); }
+  .drill-play {
+    position: absolute;
+    left: 50%; bottom: 80px;
+    transform: translateX(-50%);
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(212,255,58,0.95);
+    color: #0a0c10;
+    border: none;
+    display: grid; place-items: center;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 24px rgba(212,255,58,0.3);
+  }
+  .drill-scrub {
+    position: absolute;
+    left: 14px; right: 14px; bottom: 14px;
+  }
+  .drill-scrub-bar {
+    height: 4px; background: rgba(255,255,255,0.15);
+    border-radius: 2px; overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .drill-scrub-fill {
+    width: 32%; height: 100%;
+    background: var(--accent);
+  }
+  .drill-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-2);
+    display: flex; justify-content: space-between;
+  }
+
+  .drill-info-block {
+    padding: 20px 24px 0;
+  }
+  .drill-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .drill-name-h {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+  }
+  .drill-name-h .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .drill-meta-row {
+    display: flex; gap: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    margin: 8px 0 14px;
+  }
+  .drill-meta-row span { display: inline-flex; align-items: center; gap: 5px; }
+
+  .drill-steps {
+    padding: 0 24px;
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .drill-step {
+    display: flex; gap: 12px;
+    padding: 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    align-items: flex-start;
+  }
+  .drill-step.current {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+  .drill-step.done {
+    background: var(--ok-dim);
+    border-color: rgba(77,214,138,0.3);
+    opacity: 0.7;
+  }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--bg-3);
+    color: var(--text-2);
+    display: grid; place-items: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .drill-step.current .step-num { background: var(--accent); color: #0a0c10; }
+  .drill-step.done .step-num { background: var(--ok); color: #0a0c10; }
+  .step-text { flex: 1; }
+  .step-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .step-desc {
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+
+  .drill-cta {
+    padding: 8px 24px 0;
+  }
+
+  /* shared content padding */
+  .pad-top { padding-top: 12px; }
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Mobile <span class="em">Full Flow</span></h1>
+  <div class="sub">Onboarding → Home → Capture → Result → Drill · 5 screens</div>
+</div>
+
+<div class="controls">
+  <button class="ctrl active" data-screen="onboard">1 · Onboarding</button>
+  <button class="ctrl" data-screen="home">2 · Home</button>
+  <button class="ctrl" data-screen="capture">3 · Capture</button>
+  <button class="ctrl" data-screen="result">4 · Result</button>
+  <button class="ctrl" data-screen="drill">5 · Drill</button>
+</div>
+
+<div class="phones-row" id="phonesRow">
+
+  <!-- ===================== ONBOARDING ===================== -->
+  <div class="phone" data-screen="onboard">
+    <div class="screen ob">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="sb-right">
+          <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M1 9h2M5 7h2M9 5h2M13 3h2M17 1h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 7.5C3 5 5.5 3.5 8 3.5s5 1.5 7 4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="9.5" r="1" fill="currentColor"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="3" width="14" height="6" rx="1" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="ob-progress">
+        <span class="done"></span>
+        <span class="active"></span>
+        <span></span>
+        <span></span>
+      </div>
+      <button class="ob-skip">건너뛰기</button>
+
+      <div class="ob-hero">
+        <div class="ob-hero-art">
+          <!-- abstract golf swing arc art -->
+          <svg viewBox="0 0 220 220" width="220" height="220" fill="none">
+            <defs>
+              <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#d4ff3a" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#d4ff3a" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <circle cx="110" cy="110" r="100" fill="url(#glow)"/>
+            <!-- swing arc -->
+            <path d="M30 170 Q 60 30 110 30 Q 160 30 190 170" stroke="#d4ff3a" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 6" opacity="0.6"/>
+            <!-- ghost frames -->
+            <g opacity="0.25" stroke="#5aa9ff" stroke-width="1.4" fill="none" stroke-linecap="round">
+              <circle cx="40" cy="160" r="6"/>
+              <path d="M40 166 L40 195 M40 175 L25 188 M40 175 L55 188"/>
+            </g>
+            <g opacity="0.4" stroke="#5aa9ff" stroke-width="1.4" fill="none" stroke-linecap="round">
+              <circle cx="75" cy="80" r="6"/>
+              <path d="M75 86 L75 115 M75 95 L60 108 M75 95 L90 75"/>
+            </g>
+            <!-- main golfer -->
+            <g stroke="#d4ff3a" stroke-width="2.2" fill="none" stroke-linecap="round">
+              <circle cx="110" cy="60" r="9"/>
+              <path d="M110 69 L110 130 M110 90 L88 110 L80 140 M110 90 L132 110 L150 90 M150 90 L175 70 M110 130 L96 175 L88 210 M110 130 L124 175 L132 210"/>
+            </g>
+            <g opacity="0.4" stroke="#5aa9ff" stroke-width="1.4" fill="none" stroke-linecap="round">
+              <circle cx="155" cy="100" r="6"/>
+              <path d="M155 106 L155 135 M155 115 L170 100 M155 115 L140 128"/>
+            </g>
+            <!-- ball -->
+            <circle cx="110" cy="195" r="5" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="ob-stage-label">02 / 04 · 시작하기</div>
+        <h1 class="ob-title">어떤 클럽으로<br>주로 <span class="em">연습</span>하세요?</h1>
+        <p class="ob-subtitle">선택한 클럽으로 분석 정확도가 높아져요.<br>나중에 변경할 수 있어요.</p>
+      </div>
+
+      <div class="ob-options">
+        <div class="ob-option selected">
+          <div class="ob-option-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v6M9 4h6M10 8l-4 14h12L14 8z"/></svg>
+          </div>
+          <div class="ob-option-text">
+            <div class="ob-option-name">7번 아이언</div>
+            <div class="ob-option-desc">가장 많이 사용 · 추천</div>
+          </div>
+          <div class="ob-option-radio"></div>
+        </div>
+
+        <div class="ob-option">
+          <div class="ob-option-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 3l3 18M19 3l-3 18M8 21h8"/></svg>
+          </div>
+          <div class="ob-option-text">
+            <div class="ob-option-name">드라이버</div>
+            <div class="ob-option-desc">티샷 · 비거리 위주</div>
+          </div>
+          <div class="ob-option-radio"></div>
+        </div>
+
+        <div class="ob-option">
+          <div class="ob-option-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-7"/></svg>
+          </div>
+          <div class="ob-option-text">
+            <div class="ob-option-name">전체 (자동 감지)</div>
+            <div class="ob-option-desc">매번 자동으로 인식</div>
+          </div>
+          <div class="ob-option-radio"></div>
+        </div>
+      </div>
+
+      <div class="ob-cta">
+        <button class="btn-primary">
+          다음
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== HOME ===================== -->
+  <div class="phone" data-screen="home" style="display:none">
+    <div class="screen home">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="sb-right">
+          <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M1 9h2M5 7h2M9 5h2M13 3h2M17 1h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 7.5C3 5 5.5 3.5 8 3.5s5 1.5 7 4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="9.5" r="1" fill="currentColor"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="3" width="14" height="6" rx="1" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="scroll-area">
+        <div class="home-header pad-top">
+          <div>
+            <div class="greeting">안녕, <span class="em">민준</span></div>
+            <div class="greeting-sub">SUNDAY · APR 19</div>
+          </div>
+          <div class="avatar">M</div>
+        </div>
+
+        <div class="week-card">
+          <div class="week-tag">이번 주 목표</div>
+          <div class="week-goal">템포 <span class="em">B → A</span></div>
+          <div class="week-sub">3 / 5 세션 완료 · 2일 남음</div>
+          <div class="week-progress-row">
+            <div class="week-bar"><div class="week-bar-fill"></div></div>
+            <span class="week-pct">60%</span>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-mini">
+            <div class="v hl">78</div>
+            <div class="l">평균 점수</div>
+          </div>
+          <div class="stat-mini">
+            <div class="v">12</div>
+            <div class="l">이번 달</div>
+          </div>
+          <div class="stat-mini">
+            <div class="v">+8y</div>
+            <div class="l">비거리 ↑</div>
+          </div>
+        </div>
+
+        <div class="section-h">
+          <h3>최근 세션</h3>
+          <a href="#" class="more">전체 →</a>
+        </div>
+
+        <div class="session-list">
+          <div class="session-card">
+            <div class="session-thumb">
+              <svg width="28" height="36" viewBox="0 0 28 36" fill="none">
+                <circle cx="14" cy="7" r="4" stroke="#d4ff3a" stroke-width="1.4"/>
+                <path d="M14 11 L14 22 M14 14 L8 19 M14 14 L20 19 M14 22 L10 33 M14 22 L18 33" stroke="#d4ff3a" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="session-info">
+              <div class="session-name">오늘 세션</div>
+              <div class="session-meta">09:45 · 7I · 4 SHOTS</div>
+            </div>
+            <div class="session-score">
+              <div class="v hi">78</div>
+              <div class="d">↑ +4</div>
+            </div>
+          </div>
+
+          <div class="session-card">
+            <div class="session-thumb">
+              <svg width="28" height="36" viewBox="0 0 28 36" fill="none" opacity="0.7">
+                <circle cx="14" cy="7" r="4" stroke="#b8bdc7" stroke-width="1.4"/>
+                <path d="M14 11 L14 22 M14 14 L20 17 M14 14 L8 19 M14 22 L10 33 M14 22 L18 33" stroke="#b8bdc7" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="session-info">
+              <div class="session-name">어제 세션</div>
+              <div class="session-meta">17:20 · 7I · 3 SHOTS</div>
+            </div>
+            <div class="session-score">
+              <div class="v">74</div>
+              <div class="d" style="color:var(--text-3)">—</div>
+            </div>
+          </div>
+
+          <div class="session-card">
+            <div class="session-thumb">
+              <svg width="28" height="36" viewBox="0 0 28 36" fill="none" opacity="0.7">
+                <circle cx="14" cy="7" r="4" stroke="#b8bdc7" stroke-width="1.4"/>
+                <path d="M14 11 L14 22 M14 14 L20 13 M14 14 L8 18 M14 22 L10 33 M14 22 L18 33" stroke="#b8bdc7" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="session-info">
+              <div class="session-name">목요일 세션</div>
+              <div class="session-meta">18:10 · DR · 5 SHOTS</div>
+            </div>
+            <div class="session-score">
+              <div class="v">71</div>
+              <div class="d" style="color:var(--text-3)">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-h">
+          <h3>오늘의 드릴</h3>
+          <a href="#" class="more">변경</a>
+        </div>
+
+        <div class="drill-suggest">
+          <div class="drill-suggest-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="drill-suggest-text">
+            <div class="drill-suggest-tag">PRESCRIBED</div>
+            <div class="drill-suggest-name">메트로놈 템포 드릴</div>
+            <div class="drill-suggest-meta">10분 · 임팩트 ↑</div>
+          </div>
+          <button class="icon-btn" style="background:var(--accent); border-color:var(--accent); color:#0a0c10">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tabbar">
+        <div class="tab-item active">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="lbl">홈</span>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span class="lbl">기록</span>
+        </div>
+        <div class="tab-cta">
+          <button class="tab-cta-btn">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </button>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="lbl">드릴</span>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="lbl">프로필</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CAPTURE (link card) ===================== -->
+  <div class="phone" data-screen="capture" style="display:none">
+    <div class="screen" style="background:var(--bg);">
+      <div class="status-bar">
+        <span>9:42</span>
+        <span class="sb-right">
+          <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M1 9h2M5 7h2M9 5h2M13 3h2M17 1h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 7.5C3 5 5.5 3.5 8 3.5s5 1.5 7 4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="9.5" r="1" fill="currentColor"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="3" width="14" height="6" rx="1" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div style="padding: 20px 24px 0; display:flex; align-items:center; gap:12px;">
+        <button class="icon-btn" onclick="showScreen('home')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style="font-size: 16px; font-weight: 700;">새 세션</div>
+      </div>
+
+      <div style="flex:1; display:flex; flex-direction:column; padding: 28px 24px; gap: 16px;">
+
+        <h2 style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; margin: 0 0 6px;">어떻게<br>시작할까요?</h2>
+        <p style="font-size: 14px; color: var(--text-2); margin: 0 0 12px;">실시간 촬영하거나 갤러리에서 영상을 가져올 수 있어요.</p>
+
+        <a href="capture.html" style="
+          display:flex; flex-direction:column; gap: 16px;
+          padding: 24px;
+          background: linear-gradient(135deg, var(--accent), #b8e028);
+          color: #0a0c10;
+          border-radius: 20px;
+          text-decoration: none;
+          position: relative;
+          overflow: hidden;
+        ">
+          <div style="font-family:'JetBrains Mono',monospace; font-size: 11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase;">★ RECOMMENDED</div>
+          <div>
+            <div style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 4px;">실시간 촬영</div>
+            <div style="font-size: 13px; opacity: 0.8;">자동 감지 + 음성 명령으로 손쉽게</div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top: 8px;">
+            <div style="display:flex; gap: 8px;">
+              <span style="padding: 4px 10px; background: rgba(0,0,0,0.15); border-radius: 100px; font-size:11px; font-weight:600;">자동 시작</span>
+              <span style="padding: 4px 10px; background: rgba(0,0,0,0.15); border-radius: 100px; font-size:11px; font-weight:600;">음성 명령</span>
+            </div>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <button style="
+          display:flex; align-items:center; gap: 14px;
+          padding: 18px 20px;
+          background: var(--bg-2);
+          border: 1px solid var(--line);
+          border-radius: 18px;
+          color: var(--text);
+          cursor: pointer;
+          text-align: left;
+          font-family: inherit;
+        ">
+          <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--bg-3); display:grid; place-items:center; color: var(--text-2);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21"/></svg>
+          </div>
+          <div style="flex:1">
+            <div style="font-size: 15px; font-weight: 700; margin-bottom:2px">갤러리에서 가져오기</div>
+            <div style="font-size: 12px; color: var(--text-3);">기존 영상 불러와 분석</div>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color: var(--text-3)"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+
+        <div style="margin-top: 8px; padding: 14px; background: var(--bg-2); border: 1px dashed var(--line-2); border-radius: 14px; display: flex; align-items: center; gap: 10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color: var(--text-3); flex-shrink: 0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <div style="font-size: 12px; color: var(--text-2); line-height: 1.5;">
+            거치대에 폰을 세워두면 더 정확해요. <span style="color:var(--accent); font-weight:600;">설정 가이드 보기 →</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="lbl">홈</span>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span class="lbl">기록</span>
+        </div>
+        <div class="tab-cta">
+          <button class="tab-cta-btn" style="background: var(--accent); transform: scale(1.05);">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </button>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="lbl">드릴</span>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="lbl">프로필</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== RESULT ===================== -->
+  <div class="phone" data-screen="result" style="display:none">
+    <div class="screen result">
+      <div class="status-bar">
+        <span>9:46</span>
+        <span class="sb-right">
+          <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M1 9h2M5 7h2M9 5h2M13 3h2M17 1h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 7.5C3 5 5.5 3.5 8 3.5s5 1.5 7 4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="9.5" r="1" fill="currentColor"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="3" width="14" height="6" rx="1" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="scroll-area">
+        <div class="result-top pad-top">
+          <button class="icon-btn" onclick="showScreen('capture')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="result-title">
+            <div class="top">SESSION #047 · 09:45</div>
+            <div class="name">오늘 세션 · 4번째 스윙</div>
+          </div>
+          <button class="icon-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <div class="score-hero">
+          <div class="label">SWING SCORE</div>
+          <div class="big">78</div>
+          <div class="grade">B · 양호</div>
+          <div class="delta">↑ +4 vs 어제 평균</div>
+        </div>
+
+        <div class="quick-metrics">
+          <div class="qm">
+            <div class="l">템포</div>
+            <div class="v bad">0.8:1</div>
+            <div class="s">목표 3:1</div>
+          </div>
+          <div class="qm">
+            <div class="l">헤드 이탈</div>
+            <div class="v bad">1.7cm</div>
+            <div class="s">기준 &lt; 1</div>
+          </div>
+          <div class="qm">
+            <div class="l">힙 회전</div>
+            <div class="v warn">45°</div>
+            <div class="s">목표 55°</div>
+          </div>
+          <div class="qm">
+            <div class="l">밸런스</div>
+            <div class="v ok">A</div>
+            <div class="s">안정적</div>
+          </div>
+        </div>
+
+        <div class="section-h" style="padding-top:0">
+          <h3>핵심 교정 포인트 · TOP 3</h3>
+        </div>
+
+        <div class="issues-section">
+          <div class="issue-card">
+            <div class="issue-rank">1</div>
+            <div class="issue-content">
+              <div class="issue-title">임팩트 헤드 스웨이</div>
+              <div class="issue-desc">척추가 축이 아니라 전체가 1.7cm 밀리고 있어요.</div>
+              <a href="#" class="issue-action" onclick="showScreen('drill'); return false;">메트로놈 드릴 →</a>
+            </div>
+          </div>
+
+          <div class="issue-card">
+            <div class="issue-rank">2</div>
+            <div class="issue-content">
+              <div class="issue-title">탑에서 8° 오버스윙</div>
+              <div class="issue-desc">백스윙이 너무 길어 다운에서 일찍 릴리즈됩니다.</div>
+              <a href="#" class="issue-action">의자 힙턴 →</a>
+            </div>
+          </div>
+
+          <div class="issue-card warn">
+            <div class="issue-rank">3</div>
+            <div class="issue-content">
+              <div class="issue-title">체중 전환 부족</div>
+              <div class="issue-desc">다운스윙 시 전방 이동이 62% (목표 80%).</div>
+              <a href="#" class="issue-action">발 들고 피니시 →</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-cta" style="margin-bottom: 16px;">
+          <button class="btn-secondary" onclick="showScreen('capture')" style="flex:1;">한 번 더</button>
+          <a href="detail.html" class="btn-primary" style="flex:1.4; text-decoration:none;">
+            상세 보기
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="lbl">홈</span>
+        </div>
+        <div class="tab-item active">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span class="lbl">기록</span>
+        </div>
+        <div class="tab-cta">
+          <button class="tab-cta-btn">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </button>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="lbl">드릴</span>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="lbl">프로필</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== DRILL ===================== -->
+  <div class="phone" data-screen="drill" style="display:none">
+    <div class="screen drill">
+      <div class="status-bar">
+        <span>9:48</span>
+        <span class="sb-right">
+          <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M1 9h2M5 7h2M9 5h2M13 3h2M17 1h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 7.5C3 5 5.5 3.5 8 3.5s5 1.5 7 4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="9.5" r="1" fill="currentColor"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="3" width="14" height="6" rx="1" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="scroll-area" style="padding-bottom: 100px;">
+        <div style="padding: 8px 24px 0; display:flex; align-items:center; gap:12px;">
+          <button class="icon-btn" onclick="showScreen('result')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div style="font-size: 14px; font-weight: 600; color: var(--text-2);">드릴 1 / 3</div>
+          <div style="flex:1"></div>
+          <button class="icon-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+
+        <div class="drill-video">
+          <div class="drill-video-figure">
+            <svg viewBox="0 0 200 280" width="80%" height="80%" fill="none">
+              <line x1="100" y1="40" x2="100" y2="260" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+              <line x1="20" y1="270" x2="180" y2="270" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+              <g stroke="#d4ff3a" stroke-width="2.4" fill="none" stroke-linecap="round">
+                <circle cx="100" cy="38" r="13"/>
+                <path d="M100 51 L100 142"/>
+                <path d="M100 80 L72 110 L60 150"/>
+                <path d="M100 80 L130 100 L160 78"/>
+                <path d="M160 78 L188 55" stroke-width="1.6" opacity="0.7"/>
+                <path d="M100 142 L86 202 L74 268"/>
+                <path d="M100 142 L114 202 L122 268"/>
+              </g>
+              <circle cx="138" cy="266" r="4" fill="#fff"/>
+              <!-- metronome arc -->
+              <path d="M50 240 Q 100 180 150 240" stroke="#d4ff3a" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.6" fill="none"/>
+            </svg>
+          </div>
+
+          <div class="drill-overlay-tl">
+            <span class="ov-pill hot">● 데모 영상</span>
+          </div>
+          <div class="drill-overlay-tr">
+            <span class="ov-pill">0.5×</span>
+          </div>
+
+          <button class="drill-play">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+
+          <div class="drill-scrub">
+            <div class="drill-scrub-bar"><div class="drill-scrub-fill"></div></div>
+            <div class="drill-time">
+              <span>0:14</span>
+              <span>0:42</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="drill-info-block">
+          <span class="drill-tag">★ 처방됨 · 임팩트 ↑</span>
+          <h2 class="drill-name-h">메트로놈 <span class="em">템포</span> 드릴</h2>
+          <div class="drill-meta-row">
+            <span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              10분
+            </span>
+            <span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M9 4h6M10 8l-4 14h12L14 8z" stroke-linecap="round"/></svg>
+              7번 아이언
+            </span>
+            <span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke-linecap="round"/></svg>
+              템포 ↑
+            </span>
+          </div>
+        </div>
+
+        <div style="padding: 0 24px 14px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size: 11px; color: var(--text-3); letter-spacing:0.1em; text-transform:uppercase; margin-bottom: 10px; font-weight:700;">단계별 가이드</div>
+        </div>
+
+        <div class="drill-steps">
+          <div class="drill-step done">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <div class="step-title">셋업 · 메트로놈 60 BPM</div>
+              <div class="step-desc">앱 메트로놈을 60에 맞추고 어드레스 자세 잡기</div>
+            </div>
+          </div>
+
+          <div class="drill-step current">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <div class="step-title">백스윙 3박자</div>
+              <div class="step-desc">"하나-둘-셋" 박자에 맞춰 천천히 탑까지 올리기. 탑에서 잠시 멈춤.</div>
+            </div>
+          </div>
+
+          <div class="drill-step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <div class="step-title">다운스윙 1박자</div>
+              <div class="step-desc">"넷"에 맞춰 빠르게 임팩트. 3:1 비율 체득이 목표.</div>
+            </div>
+          </div>
+
+          <div class="drill-step">
+            <div class="step-num">4</div>
+            <div class="step-text">
+              <div class="step-title">10회 반복</div>
+              <div class="step-desc">매 스윙 후 5초 휴식. 점차 BPM을 80까지 올려보세요.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="drill-cta" style="display:flex; gap:8px;">
+          <button class="btn-secondary" style="flex:1">건너뛰기</button>
+          <button class="btn-primary" onclick="showScreen('capture')" style="flex:1.4">
+            연습 시작
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="lbl">홈</span>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span class="lbl">기록</span>
+        </div>
+        <div class="tab-cta">
+          <button class="tab-cta-btn">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </button>
+        </div>
+        <div class="tab-item active">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="lbl">드릴</span>
+        </div>
+        <div class="tab-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="lbl">프로필</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="font-family:'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); letter-spacing:0.1em; text-transform: uppercase; text-align: center;">
+  <a href="index.html" style="color: var(--text-3); text-decoration: none; padding: 6px 12px; border: 1px solid var(--line); border-radius: 100px;">← Back to wireframes</a>
+  &nbsp;&nbsp;
+  <span>← / → 화면 이동</span>
+</div>
+
+<script>
+  const order = ['onboard','home','capture','result','drill'];
+  let cur = 'onboard';
+
+  function showScreen(name) {
+    document.querySelectorAll('.phone[data-screen]').forEach(p => {
+      p.style.display = p.dataset.screen === name ? '' : 'none';
+    });
+    document.querySelectorAll('.ctrl').forEach(c => {
+      c.classList.toggle('active', c.dataset.screen === name);
+    });
+    cur = name;
+    try { localStorage.setItem('sm_mobile_step', name); } catch {}
+  }
+
+  document.querySelectorAll('.ctrl').forEach(c => {
+    c.addEventListener('click', () => showScreen(c.dataset.screen));
+  });
+
+  // tab cta in home → capture
+  document.querySelectorAll('.tab-cta-btn').forEach(b => {
+    b.addEventListener('click', () => showScreen('capture'));
+  });
+
+  // restore
+  try {
+    const saved = localStorage.getItem('sm_mobile_step');
+    if (saved && order.includes(saved)) showScreen(saved);
+  } catch {}
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const idx = order.indexOf(cur);
+    if (e.key === 'ArrowRight' && idx < order.length - 1) showScreen(order[idx + 1]);
+    if (e.key === 'ArrowLeft' && idx > 0) showScreen(order[idx - 1]);
+  });
+
+  window.showScreen = showScreen;
+</script>
+
+</body>
+</html>

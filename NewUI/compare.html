@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · 비교 모드 (Hi-Fi)</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/hifi.css">
+<style>
+  /* Mode toggle */
+  .mode-tabs {
+    display: inline-flex;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .mode-tab {
+    padding: 8px 16px;
+    background: transparent; border: none;
+    color: var(--text-3);
+    font-family: inherit;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    border-radius: 7px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .mode-tab .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    background: var(--bg-4);
+    color: var(--text-3);
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+  .mode-tab.on {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+  .mode-tab.on .num {
+    background: rgba(0,0,0,0.15);
+    color: #0a0c10;
+  }
+
+  /* Split viewers */
+  .split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .viewer-panel {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .viewer-panel.hi {
+    border-color: rgba(212,255,58,0.3);
+    box-shadow: 0 0 0 1px rgba(212,255,58,0.15);
+  }
+  .viewer-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-3);
+  }
+  .viewer-tag {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--bg-4);
+    color: var(--text-2);
+    display: grid; place-items: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .viewer-tag.you { background: var(--bg-4); color: var(--text); }
+  .viewer-tag.pro { background: var(--accent); color: #0a0c10; }
+  .viewer-tag.before { background: var(--bg-4); color: var(--text-2); }
+  .viewer-tag.after { background: var(--accent); color: #0a0c10; }
+  .vh-meta { flex: 1; min-width: 0; }
+  .vh-name {
+    font-size: 14px; font-weight: 700;
+    letter-spacing: -0.01em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .vh-name .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic; color: var(--accent);
+  }
+  .vh-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text-3);
+    margin-top: 3px; letter-spacing: 0.06em;
+  }
+  .vh-score {
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 26px;
+    line-height: 1;
+  }
+  .vh-score.hi { color: var(--accent); }
+
+  .v-stage {
+    position: relative;
+    aspect-ratio: 16 / 11;
+    background:
+      radial-gradient(ellipse at 50% 60%, #1a2434 0%, #0a0e14 70%, #050810 100%);
+  }
+  .v-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .v-pose {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px; height: 260px;
+    color: var(--text-2);
+  }
+  .v-pose.pro { color: var(--accent); }
+  .v-pose svg { width: 100%; height: 100%; }
+  .v-pose svg path, .v-pose svg line { stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .v-pose svg circle { fill: currentColor; }
+
+  /* Spine angle annotation */
+  .ann {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: rgba(10,12,16,0.85);
+    border: 1px solid var(--line-2);
+    padding: 3px 7px;
+    border-radius: 4px;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .ann.bad { border-color: rgba(255,90,71,0.5); color: var(--danger); }
+  .ann.ok { border-color: rgba(77,214,138,0.5); color: var(--ok); }
+  .ann.accent { border-color: rgba(212,255,58,0.5); color: var(--accent); }
+
+  .v-overlay-tl {
+    position: absolute; top: 12px; left: 12px;
+    display: flex; gap: 6px;
+  }
+  .v-overlay-tr {
+    position: absolute; top: 12px; right: 12px;
+    display: flex; gap: 6px;
+  }
+  .ov-chip {
+    padding: 5px 10px;
+    background: rgba(10,12,16,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text-2);
+  }
+  .ov-chip.hot { color: var(--accent); border-color: rgba(212,255,58,0.4); }
+
+  /* Synced timeline */
+  .sync-bar {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .sync-head {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 14px;
+  }
+  .sync-play {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: #0a0c10;
+  }
+  .sync-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    font-feature-settings: 'tnum';
+  }
+  .sync-status .accent { color: var(--accent); font-weight: 700; }
+  .sync-actions {
+    margin-left: auto;
+    display: flex; gap: 8px;
+    align-items: center;
+  }
+  .sync-track {
+    position: relative;
+    height: 56px;
+  }
+  .track-base {
+    position: absolute;
+    left: 0; right: 0;
+    height: 4px;
+    background: var(--bg-4);
+    border-radius: 2px;
+  }
+  .track-base.you { top: 14px; }
+  .track-base.pro { top: 38px; }
+  .track-fill {
+    position: absolute;
+    left: 0; height: 100%;
+    border-radius: 2px;
+    width: 50%;
+  }
+  .track-fill.you { background: var(--text-3); }
+  .track-fill.pro { background: var(--accent); }
+  .track-stage {
+    position: absolute;
+    top: -6px;
+    width: 2px; height: 16px;
+    background: var(--text-3);
+    border-radius: 1px;
+  }
+  .track-stage.pro { background: var(--accent); opacity: 0.6; }
+  .track-label {
+    position: absolute;
+    left: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .track-label.you { top: 0; }
+  .track-label.pro { top: 24px; color: var(--accent); }
+  .track-handle {
+    position: absolute;
+    left: 50%;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--text);
+    z-index: 3;
+  }
+  .track-handle::before {
+    content: "";
+    position: absolute;
+    left: -5px; top: -4px;
+    width: 12px; height: 12px;
+    background: var(--text);
+    border-radius: 50%;
+  }
+  .track-handle::after {
+    content: "P3 IMPACT";
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text);
+    background: var(--bg-3);
+    padding: 2px 6px;
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* Diff panel */
+  .diff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .diff-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+
+  .diff-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 90px 70px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .diff-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .diff-row:first-child { padding-top: 0; }
+  .diff-name {
+    font-size: 13px; font-weight: 600;
+    color: var(--text);
+  }
+  .diff-name .sub {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    margin-top: 2px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .diff-bar {
+    position: relative;
+    height: 8px;
+    background: var(--bg-4);
+    border-radius: 4px;
+  }
+  .diff-bar-pro {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    opacity: 0.4;
+  }
+  .diff-bar-you {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    border-radius: 4px;
+  }
+  .diff-bar-you.bad { background: var(--danger); }
+  .diff-bar-you.ok { background: var(--ok); }
+  .diff-bar-you.warn { background: var(--warn); }
+  .diff-marker {
+    position: absolute;
+    top: -4px;
+    width: 2px; height: 16px;
+    background: var(--text);
+    border-radius: 1px;
+  }
+  .diff-vals {
+    display: flex; flex-direction: column; align-items: flex-end;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .diff-vals .you { color: var(--text); font-weight: 700; }
+  .diff-vals .pro { color: var(--accent); }
+  .diff-delta {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .diff-delta.bad { color: var(--danger); }
+  .diff-delta.ok { color: var(--ok); }
+  .diff-delta.warn { color: var(--warn); }
+
+  /* Heatmap */
+  .heat-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-top: 14px;
+  }
+  .heat-cell {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    position: relative;
+  }
+  .heat-cell .lbl {
+    position: absolute;
+    top: 4px; left: 6px;
+    font-size: 8px;
+    color: rgba(0,0,0,0.5);
+  }
+  .heat-cell.l1 { background: rgba(77,214,138,0.6); color: #0a0c10; }
+  .heat-cell.l2 { background: rgba(212,255,58,0.5); color: #0a0c10; }
+  .heat-cell.l3 { background: rgba(255,184,77,0.55); color: #0a0c10; }
+  .heat-cell.l4 { background: rgba(255,90,71,0.7); color: #fff; }
+  .heat-cell.l4 .lbl { color: rgba(255,255,255,0.6); }
+  .heat-cell.l5 { background: var(--danger); color: #fff; }
+
+  /* Verdict */
+  .verdict {
+    background: linear-gradient(135deg, rgba(212,255,58,0.06), rgba(90,169,255,0.04));
+    border: 1px solid rgba(212,255,58,0.2);
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin-bottom: 20px;
+  }
+  .verdict-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 18px;
+    align-items: center;
+  }
+  .verdict-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: var(--accent);
+    color: #0a0c10;
+    display: grid; place-items: center;
+  }
+  .verdict-text h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .verdict-text h3 .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .verdict-text p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+
+  /* Pro picker */
+  .pro-picker {
+    display: flex; gap: 6px;
+    flex-wrap: wrap;
+  }
+  .pro-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 6px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pro-pill:hover { border-color: var(--line-3); }
+  .pro-pill.on { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+  .pro-avatar {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5aa9ff, #b985ff);
+    color: #0a0c10;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700;
+  }
+  .pro-pill.on .pro-avatar { background: linear-gradient(135deg, #d4ff3a, #b8e02a); }
+
+  /* Frame thumbnail strip */
+  .frame-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .frame-cell {
+    aspect-ratio: 1;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .frame-cell.on {
+    border-color: var(--accent);
+    background: var(--bg-4);
+  }
+  .frame-num {
+    position: absolute;
+    top: 4px; left: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text-3);
+    letter-spacing: 0.06em;
+  }
+  .frame-cell.on .frame-num { color: var(--accent); }
+  .frame-cell svg {
+    width: 100%; height: 100%;
+    color: var(--text-3);
+  }
+  .frame-cell.on svg { color: var(--text); }
+  .frame-cell svg path, .frame-cell svg line { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .frame-cell svg circle { fill: currentColor; }
+
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <aside class="sidebar" data-hifi-sidebar="compare"></aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div class="crumb">
+        <a href="index.html">와이어프레임</a>
+        <span class="sep">/</span>
+        <a href="detail.html">상세 진단</a>
+        <span class="sep">/</span>
+        <span class="now">비교 모드</span>
+      </div>
+      <div class="topbar-actions">
+        <div class="mode-tabs">
+          <button class="mode-tab on">vs 프로 <span class="num">A</span></button>
+          <button class="mode-tab">전 / 후 <span class="num">B</span></button>
+          <button class="mode-tab">vs 동료 <span class="num">C</span></button>
+        </div>
+        <button class="btn icon" title="화면 회전">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </button>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 10 12 15 17 10" stroke-linecap="round"/><line x1="12" y1="15" x2="12" y2="3" stroke-linecap="round"/></svg>
+          GIF 저장
+        </button>
+        <button class="btn primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          드릴 처방
+        </button>
+      </div>
+    </div>
+
+    <div class="header-block">
+      <div>
+        <div class="session-meta">COMPARISON · SESSION #047 ↔ RORY MCILROY · 7 IRON</div>
+        <h1 class="h1">나의 스윙 <span class="em">vs</span> 프로</h1>
+        <div style="margin-top:10px; color: var(--text-2); font-size:14px; max-width: 680px; line-height: 1.5;">
+          7번 아이언 다운스윙. 7단계 모두 동일 시점으로 동기화되어 재생됩니다. 차이가 큰 구간은 자동으로 강조 표시.
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="h-stat">
+          <div class="val">78<span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-3); margin-left:4px; font-style:normal;">/100</span></div>
+          <div class="lbl">나의 점수</div>
+        </div>
+        <div class="h-stat">
+          <div class="val hi">93<span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-3); margin-left:4px; font-style:normal;">/100</span></div>
+          <div class="lbl">프로 점수</div>
+        </div>
+        <div class="h-stat">
+          <div class="val warn">−15</div>
+          <div class="lbl">갭</div>
+          <div class="delta bad">3개 영역 차이</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro picker -->
+    <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+      <span class="card-sub">비교 대상 ·</span>
+      <div class="pro-picker">
+        <div class="pro-pill on">
+          <span class="pro-avatar">RM</span>
+          <span>로리 매킬로이</span>
+          <span style="color:var(--text-3); font-family:'JetBrains Mono',monospace; font-size:10px;">7I</span>
+        </div>
+        <div class="pro-pill">
+          <span class="pro-avatar">SK</span>
+          <span>스코티 셰플러</span>
+        </div>
+        <div class="pro-pill">
+          <span class="pro-avatar">JK</span>
+          <span>김주형</span>
+        </div>
+        <div class="pro-pill">
+          <span class="pro-avatar">PR</span>
+          <span>박상현</span>
+        </div>
+        <div class="pro-pill" style="border-style: dashed; color: var(--text-3);">+ 더 보기</div>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <span class="chip mono">동기화 ON</span>
+        <span class="chip mono accent">자동 어노테이션</span>
+      </div>
+    </div>
+
+    <!-- Split viewers -->
+    <div class="split-grid">
+
+      <!-- LEFT — YOU -->
+      <div class="viewer-panel">
+        <div class="viewer-head">
+          <div class="viewer-tag you">N</div>
+          <div class="vh-meta">
+            <div class="vh-name">나의 스윙 <span class="card-sub">SESSION #047</span></div>
+            <div class="vh-sub">2026.04.19 · 7 IRON · 0.88s</div>
+          </div>
+          <div class="vh-score">78</div>
+        </div>
+        <div class="v-stage">
+          <div class="v-grid"></div>
+          <div class="v-overlay-tl">
+            <div class="ov-chip">P3 IMPACT</div>
+            <div class="ov-chip">0:00.42</div>
+          </div>
+          <div class="v-overlay-tr">
+            <div class="ov-chip">240FPS</div>
+          </div>
+
+          <div class="v-pose">
+            <svg viewBox="0 0 200 260">
+              <!-- head tilted -->
+              <circle cx="98" cy="32" r="13"/>
+              <line x1="98" y1="45" x2="108" y2="148"/>
+              <!-- spine reference (target) -->
+              <line x1="98" y1="45" x2="92" y2="148" stroke-dasharray="3 4" opacity="0.4"/>
+              <!-- shoulders early -->
+              <line x1="74" y1="68" x2="132" y2="56"/>
+              <!-- arms — too high -->
+              <line x1="132" y1="56" x2="160" y2="100"/>
+              <line x1="74" y1="68" x2="120" y2="90"/>
+              <!-- club -->
+              <line x1="160" y1="100" x2="120" y2="170" stroke-dasharray="2 2"/>
+              <!-- hips open -->
+              <line x1="80" y1="148" x2="140" y2="142"/>
+              <!-- legs -->
+              <line x1="80" y1="148" x2="70" y2="226"/>
+              <line x1="140" y1="142" x2="148" y2="226"/>
+              <!-- feet -->
+              <line x1="56" y1="232" x2="86" y2="232"/>
+              <line x1="134" y1="232" x2="164" y2="232"/>
+              <!-- weight: orange dot left -->
+              <circle cx="71" cy="232" r="3.5" fill="#ff5a47"/>
+            </svg>
+          </div>
+
+          <!-- Annotations -->
+          <div class="ann bad" style="top:18%; left:62%;">스파인 +6° 기울어짐</div>
+          <div class="ann bad" style="top:42%; left:6%;">왼팔 굽힘 168°</div>
+          <div class="ann warn" style="top:73%; left:60%;">체중 좌측 62%</div>
+        </div>
+      </div>
+
+      <!-- RIGHT — PRO -->
+      <div class="viewer-panel hi">
+        <div class="viewer-head">
+          <div class="viewer-tag pro">P</div>
+          <div class="vh-meta">
+            <div class="vh-name">로리 매킬로이 <span class="em">· 프로</span></div>
+            <div class="vh-sub">PGA TOUR · 7 IRON · 0.84s</div>
+          </div>
+          <div class="vh-score hi">93</div>
+        </div>
+        <div class="v-stage">
+          <div class="v-grid"></div>
+          <div class="v-overlay-tl">
+            <div class="ov-chip hot">P3 IMPACT</div>
+            <div class="ov-chip">0:00.42</div>
+          </div>
+          <div class="v-overlay-tr">
+            <div class="ov-chip">REFERENCE · 240FPS</div>
+          </div>
+
+          <div class="v-pose pro">
+            <svg viewBox="0 0 200 260">
+              <!-- head stable -->
+              <circle cx="92" cy="34" r="13"/>
+              <!-- spine straight -->
+              <line x1="92" y1="47" x2="92" y2="148"/>
+              <!-- shoulders square -->
+              <line x1="68" y1="64" x2="124" y2="64"/>
+              <!-- arms — extended low -->
+              <line x1="124" y1="64" x2="148" y2="118"/>
+              <line x1="68" y1="64" x2="118" y2="106"/>
+              <line x1="118" y1="106" x2="148" y2="118"/>
+              <!-- club through impact -->
+              <line x1="148" y1="118" x2="100" y2="178"/>
+              <!-- hips slightly open -->
+              <line x1="74" y1="148" x2="128" y2="146"/>
+              <!-- legs stable -->
+              <line x1="74" y1="148" x2="68" y2="226"/>
+              <line x1="128" y1="146" x2="138" y2="226"/>
+              <line x1="54" y1="232" x2="84" y2="232"/>
+              <line x1="124" y1="232" x2="154" y2="232"/>
+              <circle cx="69" cy="232" r="3.5" fill="#d4ff3a"/>
+            </svg>
+          </div>
+
+          <div class="ann ok" style="top:18%; left:60%;">스파인 −1°</div>
+          <div class="ann ok" style="top:42%; left:6%;">왼팔 굽힘 178°</div>
+          <div class="ann ok" style="top:73%; left:58%;">체중 좌측 78%</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sync timeline -->
+    <div class="sync-bar">
+      <div class="sync-head">
+        <button class="sync-play">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        </button>
+        <div class="sync-status">
+          <span class="accent">P3 IMPACT</span> · 0:00.42 / 0:00.84
+        </div>
+        <div class="sync-actions">
+          <div class="speed-toggle" style="display: flex; gap: 2px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px; padding: 2px;">
+            <button style="background: transparent; border: none; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-3); cursor: pointer; border-radius: 6px;">0.25×</button>
+            <button style="background: var(--accent); color: #0a0c10; border: none; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; cursor: pointer; border-radius: 6px;">0.5×</button>
+            <button style="background: transparent; border: none; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-3); cursor: pointer; border-radius: 6px;">1×</button>
+          </div>
+          <button class="btn ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11l-7-7-7 7M12 4v17" stroke-linecap="round"/></svg></button>
+        </div>
+      </div>
+      <div class="sync-track">
+        <div class="track-label you">YOU · 0.88s</div>
+        <div class="track-base you">
+          <div class="track-fill you"></div>
+          <div class="track-stage" style="left: 0%;"></div>
+          <div class="track-stage" style="left: 16%;"></div>
+          <div class="track-stage" style="left: 32%;"></div>
+          <div class="track-stage" style="left: 50%;"></div>
+          <div class="track-stage" style="left: 66%;"></div>
+          <div class="track-stage" style="left: 84%;"></div>
+          <div class="track-stage" style="left: 100%;"></div>
+        </div>
+        <div class="track-label pro">PRO · 0.84s</div>
+        <div class="track-base pro">
+          <div class="track-fill pro"></div>
+          <div class="track-stage pro" style="left: 0%;"></div>
+          <div class="track-stage pro" style="left: 18%;"></div>
+          <div class="track-stage pro" style="left: 36%;"></div>
+          <div class="track-stage pro" style="left: 50%;"></div>
+          <div class="track-stage pro" style="left: 64%;"></div>
+          <div class="track-stage pro" style="left: 82%;"></div>
+          <div class="track-stage pro" style="left: 100%;"></div>
+        </div>
+        <div class="track-handle" style="left: 50%;"></div>
+      </div>
+
+      <!-- Frame thumbnails -->
+      <div class="frame-strip">
+        <div class="frame-cell">
+          <div class="frame-num">P0 ADDR</div>
+          <svg viewBox="0 0 60 80"><circle cx="30" cy="14" r="6"/><line x1="30" y1="20" x2="30" y2="48"/><line x1="20" y1="30" x2="40" y2="30"/><line x1="22" y1="48" x2="20" y2="72"/><line x1="38" y1="48" x2="40" y2="72"/></svg>
+        </div>
+        <div class="frame-cell">
+          <div class="frame-num">P1</div>
+          <svg viewBox="0 0 60 80"><circle cx="30" cy="14" r="6"/><line x1="30" y1="20" x2="32" y2="48"/><line x1="22" y1="28" x2="44" y2="22"/><line x1="44" y1="22" x2="52" y2="14"/><line x1="22" y1="48" x2="20" y2="72"/><line x1="40" y1="48" x2="42" y2="72"/></svg>
+        </div>
+        <div class="frame-cell">
+          <div class="frame-num">P2</div>
+          <svg viewBox="0 0 60 80"><circle cx="30" cy="14" r="6"/><line x1="30" y1="20" x2="34" y2="48"/><line x1="22" y1="28" x2="46" y2="14"/><line x1="46" y1="14" x2="54" y2="6"/><line x1="22" y1="48" x2="20" y2="72"/><line x1="42" y1="48" x2="44" y2="72"/></svg>
+        </div>
+        <div class="frame-cell on">
+          <div class="frame-num">P3 IMPACT</div>
+          <svg viewBox="0 0 60 80"><circle cx="30" cy="14" r="6"/><line x1="30" y1="20" x2="32" y2="48"/><line x1="22" y1="28" x2="44" y2="32"/><line x1="44" y1="32" x2="34" y2="56"/><line x1="22" y1="48" x2="18" y2="72"/><line x1="40" y1="48" x2="44" y2="72"/></svg>
+        </div>
+        <div class="frame-cell">
+          <div class="frame-num">P4</div>
+          <svg viewBox="0 0 60 80"><circle cx="30" cy="14" r="6"/><line x1="30" y1="20" x2="28" y2="48"/><line x1="22" y1="32" x2="46" y2="38"/><line x1="46" y1="38" x2="50" y2="58"/><line x1="22" y1="48" x2="18" y2="72"/><line x1="40" y1="48" x2="44" y2="72"/></svg>
+        </div>
+        <div class="frame-cell">
+          <div class="frame-num">P5</div>
+          <svg viewBox="0 0 60 80"><circle cx="30" cy="14" r="6"/><line x1="30" y1="20" x2="26" y2="48"/><line x1="20" y1="30" x2="42" y2="44"/><line x1="42" y1="44" x2="52" y2="60"/><line x1="22" y1="48" x2="18" y2="72"/><line x1="40" y1="48" x2="44" y2="72"/></svg>
+        </div>
+        <div class="frame-cell">
+          <div class="frame-num">P6 FIN</div>
+          <svg viewBox="0 0 60 80"><circle cx="30" cy="10" r="6"/><line x1="30" y1="16" x2="22" y2="44"/><line x1="22" y1="22" x2="40" y2="36"/><line x1="40" y1="36" x2="48" y2="22"/><line x1="22" y1="44" x2="20" y2="72"/><line x1="36" y1="44" x2="46" y2="72"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verdict -->
+    <div class="verdict">
+      <div class="verdict-row">
+        <div class="verdict-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+        </div>
+        <div class="verdict-text">
+          <h3>임팩트 시점에서 <span class="em">스파인 정렬</span>이 가장 큰 차이입니다</h3>
+          <p>로리는 어드레스 자세 그대로의 척추 각도를 임팩트까지 유지합니다. 당신은 임팩트 직전 6° 더 기울어지면서 클럽 로프트가 변해 비거리/방향성에 영향을 줍니다. 추천 드릴: <strong style="color:var(--text)">"미러 임팩트 정지" · 12분</strong></p>
+        </div>
+        <button class="btn lg primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          이 드릴 시작
+        </button>
+      </div>
+    </div>
+
+    <!-- Diff grid -->
+    <div class="diff-grid">
+
+      <div class="diff-card">
+        <div class="card-head">
+          <div class="card-title">임팩트 차이 <span class="card-sub" style="margin-left: 6px;">P3 SNAPSHOT</span></div>
+          <span class="chip bad mono">3개 BAD</span>
+        </div>
+
+        <div class="diff-row">
+          <div class="diff-name">스파인 각도<span class="sub">SPINE</span></div>
+          <div class="diff-bar">
+            <div class="diff-bar-pro" style="width: 30%"></div>
+            <div class="diff-bar-you bad" style="width: 56%"></div>
+            <div class="diff-marker" style="left: 30%"></div>
+          </div>
+          <div class="diff-vals">
+            <span class="you">+6°</span>
+            <span class="pro">목표 −1°</span>
+          </div>
+          <div class="diff-delta bad">+7°</div>
+        </div>
+
+        <div class="diff-row">
+          <div class="diff-name">왼팔 굽힘<span class="sub">LEFT ARM</span></div>
+          <div class="diff-bar">
+            <div class="diff-bar-pro" style="width: 88%"></div>
+            <div class="diff-bar-you warn" style="width: 78%"></div>
+            <div class="diff-marker" style="left: 88%"></div>
+          </div>
+          <div class="diff-vals">
+            <span class="you">168°</span>
+            <span class="pro">목표 178°</span>
+          </div>
+          <div class="diff-delta warn">−10°</div>
+        </div>
+
+        <div class="diff-row">
+          <div class="diff-name">힙 회전<span class="sub">HIP TURN</span></div>
+          <div class="diff-bar">
+            <div class="diff-bar-pro" style="width: 64%"></div>
+            <div class="diff-bar-you ok" style="width: 60%"></div>
+            <div class="diff-marker" style="left: 64%"></div>
+          </div>
+          <div class="diff-vals">
+            <span class="you">38°</span>
+            <span class="pro">목표 42°</span>
+          </div>
+          <div class="diff-delta warn">−4°</div>
+        </div>
+
+        <div class="diff-row">
+          <div class="diff-name">체중 좌측<span class="sub">WEIGHT L%</span></div>
+          <div class="diff-bar">
+            <div class="diff-bar-pro" style="width: 78%"></div>
+            <div class="diff-bar-you bad" style="width: 62%"></div>
+            <div class="diff-marker" style="left: 78%"></div>
+          </div>
+          <div class="diff-vals">
+            <span class="you">62%</span>
+            <span class="pro">목표 78%</span>
+          </div>
+          <div class="diff-delta bad">−16%</div>
+        </div>
+
+        <div class="diff-row">
+          <div class="diff-name">머리 위치<span class="sub">HEAD X</span></div>
+          <div class="diff-bar">
+            <div class="diff-bar-pro" style="width: 50%"></div>
+            <div class="diff-bar-you ok" style="width: 52%"></div>
+            <div class="diff-marker" style="left: 50%"></div>
+          </div>
+          <div class="diff-vals">
+            <span class="you">+1cm</span>
+            <span class="pro">목표 0</span>
+          </div>
+          <div class="diff-delta ok">+1cm</div>
+        </div>
+
+        <div class="diff-row">
+          <div class="diff-name">손 위치<span class="sub">HANDS Y</span></div>
+          <div class="diff-bar">
+            <div class="diff-bar-pro" style="width: 60%"></div>
+            <div class="diff-bar-you warn" style="width: 50%"></div>
+            <div class="diff-marker" style="left: 60%"></div>
+          </div>
+          <div class="diff-vals">
+            <span class="you">−2cm</span>
+            <span class="pro">목표 0</span>
+          </div>
+          <div class="diff-delta warn">−2cm</div>
+        </div>
+
+      </div>
+
+      <!-- Stage by stage heatmap + reference -->
+      <div class="diff-card">
+        <div class="card-head">
+          <div class="card-title">7단계 <span class="em">차이 히트맵</span></div>
+          <span class="chip mono">단계별 평균 갭</span>
+        </div>
+
+        <div style="margin-bottom: 14px; font-size: 12px; color: var(--text-2); line-height: 1.5;">
+          진할수록 프로와 차이가 큰 구간입니다. <span class="serif" style="color:var(--accent)">P3 임팩트</span> · <span class="serif" style="color:var(--accent)">P2 다운스윙</span>이 가장 시급합니다.
+        </div>
+
+        <div class="heat-grid">
+          <div class="heat-cell l1"><div class="lbl">P0</div>−2</div>
+          <div class="heat-cell l2"><div class="lbl">P1</div>−5</div>
+          <div class="heat-cell l4"><div class="lbl">P2</div>−12</div>
+          <div class="heat-cell l5"><div class="lbl">P3</div>−18</div>
+          <div class="heat-cell l3"><div class="lbl">P4</div>−9</div>
+          <div class="heat-cell l2"><div class="lbl">P5</div>−6</div>
+          <div class="heat-cell l1"><div class="lbl">P6</div>−3</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); letter-spacing: 0.08em;">
+          <span>ADDRESS</span>
+          <span>TAKEAWAY</span>
+          <span>DOWN</span>
+          <span style="color:var(--accent); font-weight: 700;">IMPACT</span>
+          <span>RELEASE</span>
+          <span>FOLLOW</span>
+          <span>FINISH</span>
+        </div>
+
+        <div style="margin-top: 22px; padding-top: 18px; border-top: 1px dashed var(--line);">
+          <div class="card-sub" style="margin-bottom: 10px;">PRO PROFILE — 로리 매킬로이</div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 1px dashed var(--line);">
+              <span style="font-size: 12px; color: var(--text-2);">키</span>
+              <span class="mono" style="font-size: 12px; font-weight: 700;">175cm</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 1px dashed var(--line);">
+              <span style="font-size: 12px; color: var(--text-2);">7I 평균</span>
+              <span class="mono" style="font-size: 12px; font-weight: 700; color: var(--accent);">172yds</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 1px dashed var(--line);">
+              <span style="font-size: 12px; color: var(--text-2);">스윙 템포</span>
+              <span class="mono" style="font-size: 12px; font-weight: 700;">3.2 : 1</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 1px dashed var(--line);">
+              <span style="font-size: 12px; color: var(--text-2);">스피드</span>
+              <span class="mono" style="font-size: 12px; font-weight: 700;">86mph</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="components/hifi-sidebar.js"></script>
+</body>
+</html>

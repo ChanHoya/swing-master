@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · 실시간 촬영 프로토타입</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg-2: #11141a;
+    --bg-3: #181c24;
+    --card: #1a1f27;
+    --line: rgba(255,255,255,0.08);
+    --line-2: rgba(255,255,255,0.14);
+    --text: #f5f5f0;
+    --text-2: #b8bdc7;
+    --text-3: #6b7280;
+    --accent: #d4ff3a;
+    --accent-dim: rgba(212,255,58,0.15);
+    --danger: #ff5a47;
+    --warn: #ffb84d;
+    --ok: #4dd68a;
+    --blue: #5aa9ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: #05070a; color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(212,255,58,0.04), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(90,169,255,0.04), transparent 50%),
+      #05070a;
+  }
+
+  /* ---- Phone frame ---- */
+  .stage {
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+  }
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 52px;
+    border: 9px solid #1a1c22;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.06),
+      0 40px 80px rgba(0,0,0,0.7),
+      0 20px 40px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
+  }
+  .phone::before {
+    content: "";
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 32px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 100;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .status-bar {
+    padding: 16px 28px 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; font-weight: 600;
+    font-feature-settings: 'tnum';
+    z-index: 10;
+  }
+  .status-bar .right { display: flex; gap: 5px; align-items: center; }
+
+  /* ---- Navigation pills (controls at top of stage) ---- */
+  .controls {
+    display: flex; gap: 8px; align-items: center;
+    background: rgba(20,22,28,0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--line);
+    padding: 6px;
+    border-radius: 100px;
+  }
+  .ctrl-btn {
+    padding: 8px 14px;
+    border-radius: 100px;
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .ctrl-btn:hover { color: var(--text); }
+  .ctrl-btn.active { background: var(--accent); color: #0a0c10; }
+  .ctrl-divider { width: 1px; height: 16px; background: var(--line-2); margin: 0 4px; }
+  .ctrl-label {
+    padding: 0 10px 0 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .hint {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: -10px;
+  }
+  .kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    font-size: 10px;
+    color: var(--text-2);
+    background: rgba(255,255,255,0.04);
+  }
+
+  /* ========================================================
+     SCREEN: Setup Guide
+     ======================================================== */
+  .setup-screen { padding: 20px 24px 0; }
+  .setup-top {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 28px;
+  }
+  .back-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .setup-step-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .setup-title {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 4px 0 8px;
+  }
+  .setup-title .em {
+    color: var(--accent);
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+  }
+  .setup-subtitle {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.45;
+  }
+  .ar-preview {
+    margin-top: 24px;
+    height: 260px;
+    background:
+      linear-gradient(180deg, rgba(10,12,16,0) 0%, rgba(10,12,16,0.7) 100%),
+      radial-gradient(ellipse at 50% 70%, #2a3244 0%, #141820 60%);
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+  /* faint floor grid */
+  .ar-floor {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 140px;
+    background:
+      linear-gradient(to top, rgba(212,255,58,0.08), transparent),
+      repeating-linear-gradient(90deg, transparent 0 38px, rgba(212,255,58,0.12) 38px 39px),
+      repeating-linear-gradient(0deg, transparent 0 22px, rgba(212,255,58,0.08) 22px 23px);
+    transform: perspective(400px) rotateX(55deg);
+    transform-origin: bottom;
+  }
+  .ar-phone {
+    position: absolute;
+    left: 28%; bottom: 40px;
+    width: 32px;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+  }
+  .ar-golfer {
+    position: absolute;
+    right: 20%; bottom: 30px;
+  }
+  .ar-dist {
+    position: absolute;
+    left: 28%; right: 18%; bottom: 28px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.7;
+  }
+  .ar-dist::before, .ar-dist::after {
+    content: "";
+    position: absolute; top: -4px;
+    width: 1px; height: 9px;
+    background: var(--accent);
+  }
+  .ar-dist::before { left: 0; } .ar-dist::after { right: 0; }
+  .ar-dist-label {
+    position: absolute;
+    left: 50%; bottom: 18px;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(10,12,16,0.9);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(212,255,58,0.3);
+  }
+  .ar-scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(212,255,58,0.8), transparent);
+    animation: scanline 3s ease-in-out infinite;
+  }
+  @keyframes scanline {
+    0%, 100% { top: 20%; opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    50% { top: 85%; }
+  }
+
+  .checklist {
+    margin-top: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .check-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    transition: all 0.25s;
+  }
+  .check-item.done {
+    background: rgba(77,214,138,0.06);
+    border-color: rgba(77,214,138,0.2);
+  }
+  .check-item.active {
+    background: var(--accent-dim);
+    border-color: rgba(212,255,58,0.4);
+  }
+  .check-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line-2);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    color: var(--text-3);
+  }
+  .check-item.done .check-icon {
+    background: var(--ok);
+    border-color: var(--ok);
+    color: #0a0c10;
+  }
+  .check-item.active .check-icon {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0c10;
+  }
+  .check-text { flex: 1; }
+  .check-title { font-size: 14px; font-weight: 600; }
+  .check-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .check-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .check-item.done .check-badge { color: var(--ok); }
+  .check-item.active .check-badge { color: var(--accent); }
+
+  .cta-bar {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 20px 24px 32px;
+    background: linear-gradient(180deg, transparent, var(--bg) 30%);
+  }
+  .cta-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #0a0c10;
+    border: none;
+    border-radius: 16px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform 0.15s;
+  }
+  .cta-btn:hover { transform: translateY(-1px); }
+  .cta-btn:disabled {
+    background: var(--bg-3);
+    color: var(--text-3);
+    cursor: not-allowed;
+  }
+  .cta-btn.ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line-2);
+  }
+
+  /* ========================================================
+     SCREEN: Viewfinder
+     ======================================================== */
+  .vf-screen {
+    background: #000;
+  }
+  .vf-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 40%, #1a2434 0%, #0a0e14 50%, #050810 100%);
+  }
+  .vf-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 130px 130px;
+    pointer-events: none;
+  }
+  .vf-corners {
+    position: absolute; inset: 80px 24px 180px;
+    pointer-events: none;
+  }
+  .vf-corner {
+    position: absolute;
+    width: 28px; height: 28px;
+    border: 2px solid rgba(212,255,58,0.7);
+  }
+  .vf-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+  .vf-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+  .vf-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+  .vf-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+  .vf-silhouette {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    opacity: 0.45;
+    transition: opacity 0.3s;
+  }
+  .vf-top-hud {
+    position: absolute;
+    top: 56px; left: 0; right: 0;
+    padding: 0 20px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    z-index: 5;
+  }
+  .vf-back {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(10,12,16,0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .vf-status-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: rgba(10,12,16,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: pulseDot 1.6s ease-in-out infinite;
+  }
+  @keyframes pulseDot { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  .vf-meta {
+    display: flex; gap: 6px;
+  }
+  .vf-chip {
+    padding: 6px 10px;
+    background: rgba(10,12,16,0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  .vf-center-hint {
+    position: absolute;
+    left: 50%; top: 55%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .vf-center-hint .big {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 36px;
+    line-height: 1;
+    color: var(--accent);
+    text-shadow: 0 2px 20px rgba(212,255,58,0.3);
+  }
+  .vf-center-hint .small {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .vf-detected {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    display: none;
+  }
+  .vf-detected.show { display: block; animation: detectPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes detectPop {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    60% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  .detect-ring {
+    width: 160px; height: 160px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    position: relative;
+  }
+  .detect-ring::before, .detect-ring::after {
+    content: "";
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,255,58,0.4);
+    animation: ringPulse 1.6s ease-out infinite;
+  }
+  .detect-ring::after { animation-delay: 0.8s; }
+  @keyframes ringPulse {
+    0% { transform: scale(0.9); opacity: 0.8; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+  .detect-label {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .detect-label .title {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--accent);
+  }
+  .detect-label .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    margin-top: 4px;
+    letter-spacing: 0.1em;
+  }
+
+  .vf-recording {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 3px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .vf-recording.active { border-color: var(--danger); animation: recPulse 1s ease-in-out infinite; }
+  @keyframes recPulse { 0%,100%{opacity:1}50%{opacity:0.6} }
+
+  .vf-countdown {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 160px;
+    color: var(--accent);
+    line-height: 1;
+    z-index: 10;
+    text-shadow: 0 0 40px rgba(212,255,58,0.5);
+  }
+
+  .vf-bottom {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 20px 24px 40px;
+    z-index: 5;
+  }
+  .vf-session-strip {
+    display: flex; gap: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .session-shot {
+    flex-shrink: 0;
+    width: 52px; height: 68px;
+    border-radius: 8px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    display: grid; place-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .session-shot .num {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 24px;
+    color: var(--accent);
+  }
+  .session-shot .score {
+    position: absolute;
+    bottom: 2px; right: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-2);
+  }
+  .session-shot.empty { border-style: dashed; opacity: 0.4; }
+  .session-shot.live { border-color: var(--danger); background: rgba(255,90,71,0.1); }
+  .session-shot.live::after {
+    content: "REC";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--danger);
+  }
+
+  .vf-controls {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .vf-side-btn {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: rgba(20,22,28,0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line-2);
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .vf-side-btn .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    text-align: center;
+    margin-top: 4px;
+    color: var(--text-3);
+    letter-spacing: 0.06em;
+  }
+  .vf-capture {
+    width: 78px; height: 78px;
+    border-radius: 50%;
+    background: transparent;
+    border: 3px solid var(--text);
+    display: grid; place-items: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .vf-capture-inner {
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #0a0c10;
+    transition: all 0.2s;
+  }
+  .vf-capture.auto .vf-capture-inner {
+    background: transparent;
+    border: 2px dashed var(--accent);
+    animation: autoRing 2s linear infinite;
+  }
+  @keyframes autoRing { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  .vf-capture.recording .vf-capture-inner {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: var(--danger);
+  }
+  .vf-capture-hint {
+    position: absolute;
+    top: -22px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  /* ========================================================
+     SCREEN: Session Review
+     ======================================================== */
+  .review-screen { padding: 20px 24px 0; overflow-y: auto; }
+  .review-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  .review-title {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 16px 0 4px;
+  }
+  .review-title .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .review-sub {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-bottom: 20px;
+  }
+  .review-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .review-stat {
+    text-align: center;
+  }
+  .review-stat .val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 26px;
+    line-height: 1;
+    color: var(--text);
+  }
+  .review-stat .val.hl { color: var(--accent); }
+  .review-stat .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .review-best {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+    padding: 0 2px;
+  }
+  .review-best-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+    letter-spacing: 0.04em;
+  }
+  .review-best-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+  .shot-list {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 120px;
+  }
+  .shot-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .shot-card:hover { border-color: var(--line-2); transform: translateY(-1px); }
+  .shot-card.best {
+    background: linear-gradient(135deg, rgba(212,255,58,0.1), rgba(212,255,58,0.02));
+    border-color: rgba(212,255,58,0.3);
+  }
+  .shot-thumb {
+    width: 56px; height: 72px;
+    border-radius: 10px;
+    background: var(--bg-3);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .shot-info { flex: 1; min-width: 0; }
+  .shot-info .name {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .shot-info .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 4px;
+    letter-spacing: 0.06em;
+  }
+  .shot-score {
+    text-align: right;
+  }
+  .shot-score .val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 28px;
+    line-height: 1;
+  }
+  .shot-score .val.hi { color: var(--accent); }
+  .shot-score .delta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ok);
+    margin-top: 2px;
+  }
+  .shot-score .delta.down { color: var(--danger); }
+  .best-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    background: var(--accent);
+    color: #0a0c10;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+
+  /* ---- SVG silhouette (stylized golfer) ---- */
+  .golfer-svg { width: 120px; height: 160px; }
+
+  /* ---- Info strip below phone ---- */
+  .info-strip {
+    display: flex; gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    max-width: 600px;
+    justify-content: center;
+  }
+  .info-strip .tag {
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 100px;
+  }
+
+  /* toast notification (voice command feedback etc) */
+  .toast {
+    position: absolute;
+    left: 50%; top: 110px;
+    transform: translateX(-50%);
+    padding: 10px 16px;
+    background: rgba(10,12,16,0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--accent);
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Auto indicator badge in viewfinder */
+  .vf-mode-indicator {
+    position: absolute;
+    top: 110px; left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: rgba(10,12,16,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--accent);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    z-index: 5;
+    font-weight: 600;
+  }
+
+  .link-back {
+    color: var(--text-3);
+    text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 100px;
+  }
+  .link-back:hover { color: var(--text); border-color: var(--line-2); }
+
+  .title-block {
+    text-align: center;
+  }
+  .title-block h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px;
+  }
+  .title-block h1 .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .title-block .sub {
+    font-size: 13px;
+    color: var(--text-3);
+  }
+
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <a href="index.html" class="link-back">← Wireframes</a>
+
+  <div class="title-block">
+    <h1>실시간 촬영 <span class="em">Prototype</span></h1>
+    <div class="sub">셋업 → 뷰파인더 → 세션 리뷰 · 탭하거나 키보드로 이동</div>
+  </div>
+
+  <div class="controls">
+    <span class="ctrl-label">Step</span>
+    <button class="ctrl-btn active" data-step="setup">1 · Setup</button>
+    <button class="ctrl-btn" data-step="viewfinder">2 · Viewfinder</button>
+    <button class="ctrl-btn" data-step="review">3 · Review</button>
+    <div class="ctrl-divider"></div>
+    <button class="ctrl-btn" id="replayBtn" title="시나리오 재시작">↻</button>
+  </div>
+
+  <div class="phone" id="phone">
+
+    <!-- ===== SCREEN 1: SETUP ===== -->
+    <div class="screen setup-screen" data-screen="setup">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="right">
+          <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M1 9h2M5 7h2M9 5h2M13 3h2M17 1h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 7.5C3 5 5.5 3.5 8 3.5s5 1.5 7 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="8" cy="9.5" r="1" fill="currentColor"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="3" width="14" height="6" rx="1" fill="currentColor"/><rect x="22" y="4" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="setup-top" style="margin-top: 12px;">
+        <button class="back-btn" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div>
+          <div class="setup-step-label">STEP 01 · SETUP</div>
+        </div>
+      </div>
+
+      <div>
+        <h1 class="setup-title">카메라를 <span class="em">허리 높이</span>에<br>맞춰주세요</h1>
+        <div class="setup-subtitle">거치대에 폰을 세로로 고정하고, 2~3m 거리에서 전신이 프레임에 들어오도록.</div>
+      </div>
+
+      <div class="ar-preview">
+        <div class="ar-floor"></div>
+
+        <!-- phone on tripod -->
+        <svg class="ar-phone" viewBox="0 0 40 100" fill="none">
+          <rect x="12" y="4" width="16" height="28" rx="3" stroke="#d4ff3a" stroke-width="1.5" fill="#0a0c10"/>
+          <circle cx="20" cy="8" r="0.8" fill="#d4ff3a"/>
+          <path d="M20 32 L20 55 M14 98 L20 55 L26 98 M10 98 L30 98" stroke="#6b7280" stroke-width="1" stroke-linecap="round"/>
+        </svg>
+
+        <!-- golfer silhouette -->
+        <svg class="ar-golfer" width="70" height="120" viewBox="0 0 70 120" fill="none">
+          <circle cx="35" cy="14" r="7" stroke="#d4ff3a" stroke-width="1.5" fill="none" opacity="0.7"/>
+          <path d="M35 21 L35 55 M35 30 L22 42 L15 58 M35 30 L48 42 L58 60 M35 55 L28 85 L25 115 M35 55 L42 85 L45 115" stroke="#d4ff3a" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+          <path d="M58 60 L65 40" stroke="#d4ff3a" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+        </svg>
+
+        <div class="ar-dist"></div>
+        <div class="ar-dist-label">2.5m</div>
+
+        <div class="ar-scan-line"></div>
+      </div>
+
+      <div class="checklist">
+        <div class="check-item done">
+          <div class="check-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="check-text">
+            <div class="check-title">거치대 설치</div>
+            <div class="check-sub">폰이 흔들리지 않게 고정</div>
+          </div>
+          <span class="check-badge">OK</span>
+        </div>
+
+        <div class="check-item done">
+          <div class="check-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="check-text">
+            <div class="check-title">거리 2~3m</div>
+            <div class="check-sub">전신이 프레임에 들어오는 거리</div>
+          </div>
+          <span class="check-badge">2.5M</span>
+        </div>
+
+        <div class="check-item active" id="heightCheck">
+          <div class="check-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          </div>
+          <div class="check-text">
+            <div class="check-title">허리 높이 맞추기</div>
+            <div class="check-sub">AR 가이드로 자동 감지 중…</div>
+          </div>
+          <span class="check-badge">측정중</span>
+        </div>
+      </div>
+
+      <div class="cta-bar">
+        <button class="cta-btn" id="toViewfinder" disabled>
+          카메라 시작
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== SCREEN 2: VIEWFINDER ===== -->
+    <div class="screen vf-screen" data-screen="viewfinder" style="display:none">
+      <div class="vf-bg"></div>
+      <div class="vf-grid"></div>
+      <div class="vf-corners">
+        <div class="vf-corner tl"></div>
+        <div class="vf-corner tr"></div>
+        <div class="vf-corner bl"></div>
+        <div class="vf-corner br"></div>
+      </div>
+
+      <!-- Ghost silhouette guide -->
+      <svg class="vf-silhouette" id="vfSilhouette" viewBox="0 0 100 160" fill="none">
+        <circle cx="50" cy="18" r="10" stroke="#d4ff3a" stroke-width="1.5" fill="none"/>
+        <path d="M50 28 L50 78 M50 40 L30 56 L20 78 M50 40 L70 56 L82 80 M50 78 L40 115 L36 155 M50 78 L60 115 L64 155" stroke="#d4ff3a" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M82 80 L92 50" stroke="#d4ff3a" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+      </svg>
+
+      <div class="vf-recording" id="vfRec"></div>
+
+      <div class="vf-top-hud">
+        <button class="vf-back" id="backToSetup">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="vf-status-pill">
+          <span class="status-dot"></span>
+          <span id="vfStatusText">자세 OK · 거리 적정</span>
+        </div>
+        <div class="vf-meta">
+          <span class="vf-chip">7I</span>
+          <span class="vf-chip">DTL</span>
+        </div>
+      </div>
+
+      <div class="vf-mode-indicator">● AUTO-DETECT</div>
+
+      <div class="vf-center-hint" id="vfHint">
+        <div class="big">스윙하세요</div>
+        <div class="small">자동으로 감지해 녹화합니다</div>
+      </div>
+
+      <div class="vf-detected" id="vfDetected">
+        <div class="detect-ring">
+          <div class="detect-label">
+            <div class="title">감지!</div>
+            <div class="sub">RECORDING</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vf-countdown" id="vfCountdown" style="display:none">3</div>
+
+      <div class="toast" id="vfToast">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" stroke-linecap="round"/></svg>
+        <span id="toastText">"다음" 인식됨</span>
+      </div>
+
+      <div class="vf-bottom">
+        <div class="vf-session-strip" id="sessionStrip">
+          <div class="session-shot"><div class="num">1</div><div class="score">74</div></div>
+          <div class="session-shot"><div class="num">2</div><div class="score">77</div></div>
+          <div class="session-shot live" id="currentShot"></div>
+          <div class="session-shot empty"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+        </div>
+
+        <div class="vf-controls">
+          <div class="vf-side-btn" title="갤러리">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21"/></svg>
+          </div>
+
+          <button class="vf-capture auto" id="captureBtn">
+            <span class="vf-capture-hint" id="captureHint">AUTO</span>
+            <div class="vf-capture-inner"></div>
+          </button>
+
+          <div class="vf-side-btn" title="설정">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SCREEN 3: REVIEW ===== -->
+    <div class="screen review-screen" data-screen="review" style="display:none">
+      <div class="status-bar">
+        <span>9:46</span>
+        <span class="right">
+          <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M1 9h2M5 7h2M9 5h2M13 3h2M17 1h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 7.5C3 5 5.5 3.5 8 3.5s5 1.5 7 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="8" cy="9.5" r="1" fill="currentColor"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="3" width="14" height="6" rx="1" fill="currentColor"/><rect x="22" y="4" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="review-top" style="margin-top: 8px;">
+        <button class="back-btn" id="backToVf">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style="display:flex; gap: 8px;">
+          <button class="back-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg></button>
+          <button class="back-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+
+      <h1 class="review-title">세션 <span class="em">리뷰</span></h1>
+      <div class="review-sub">2026년 4월 19일 · 7번 아이언 · 4회 스윙</div>
+
+      <div class="review-stats">
+        <div class="review-stat">
+          <div class="val hl">78</div>
+          <div class="lbl">Best</div>
+        </div>
+        <div class="review-stat">
+          <div class="val">74.5</div>
+          <div class="lbl">Avg</div>
+        </div>
+        <div class="review-stat">
+          <div class="val">4</div>
+          <div class="lbl">Shots</div>
+        </div>
+      </div>
+
+      <div class="review-best">
+        <span class="review-best-title">이번 세션</span>
+        <span class="review-best-tag">· 최고 기록 · 4번째 스윙</span>
+      </div>
+
+      <div class="shot-list">
+        <div class="shot-card best">
+          <div class="shot-thumb">
+            <svg viewBox="0 0 40 55" fill="none" width="36" height="50">
+              <circle cx="20" cy="8" r="4" stroke="#d4ff3a" stroke-width="1" fill="none"/>
+              <path d="M20 12 L20 32 M20 17 L12 23 L8 32 M20 17 L28 23 L34 32 M20 32 L16 45 L14 53 M20 32 L24 45 L26 53" stroke="#d4ff3a" stroke-width="1" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="shot-info">
+            <div class="name">4번째 스윙 <span class="best-badge">BEST</span></div>
+            <div class="meta">09:45 · 11.2초 · 임팩트 양호</div>
+          </div>
+          <div class="shot-score">
+            <div class="val hi">78</div>
+            <div class="delta">+4</div>
+          </div>
+        </div>
+
+        <div class="shot-card">
+          <div class="shot-thumb">
+            <svg viewBox="0 0 40 55" fill="none" width="36" height="50" opacity="0.8">
+              <circle cx="20" cy="8" r="4" stroke="#b8bdc7" stroke-width="1" fill="none"/>
+              <path d="M20 12 L20 32 M20 17 L14 20 L12 14 M20 17 L28 23 L34 32 M20 32 L16 45 L14 53 M20 32 L24 45 L26 53" stroke="#b8bdc7" stroke-width="1" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="shot-info">
+            <div class="name">3번째 스윙</div>
+            <div class="meta">09:43 · 10.8초 · 오버스윙</div>
+          </div>
+          <div class="shot-score">
+            <div class="val">77</div>
+            <div class="delta">+3</div>
+          </div>
+        </div>
+
+        <div class="shot-card">
+          <div class="shot-thumb">
+            <svg viewBox="0 0 40 55" fill="none" width="36" height="50" opacity="0.8">
+              <circle cx="20" cy="8" r="4" stroke="#b8bdc7" stroke-width="1" fill="none"/>
+              <path d="M20 12 L20 32 M20 17 L28 23 L34 14 M20 17 L14 23 L10 32 M20 32 L16 45 L14 53 M20 32 L24 45 L26 53" stroke="#b8bdc7" stroke-width="1" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="shot-info">
+            <div class="name">2번째 스윙</div>
+            <div class="meta">09:41 · 10.5초 · 템포 불균형</div>
+          </div>
+          <div class="shot-score">
+            <div class="val">74</div>
+            <div class="delta down">—</div>
+          </div>
+        </div>
+
+        <div class="shot-card">
+          <div class="shot-thumb">
+            <svg viewBox="0 0 40 55" fill="none" width="36" height="50" opacity="0.8">
+              <circle cx="20" cy="8" r="4" stroke="#b8bdc7" stroke-width="1" fill="none"/>
+              <path d="M20 12 L20 32 M20 17 L12 28 L14 32 M20 17 L28 28 L30 32 M20 32 L16 45 L14 53 M20 32 L24 45 L26 53" stroke="#b8bdc7" stroke-width="1" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="shot-info">
+            <div class="name">1번째 스윙</div>
+            <div class="meta">09:39 · 11.0초 · 어드레스 흔들림</div>
+          </div>
+          <div class="shot-score">
+            <div class="val">69</div>
+            <div class="delta down">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-bar" style="background: linear-gradient(180deg, transparent, var(--bg) 20%);">
+        <div style="display:flex; gap: 8px;">
+          <button class="cta-btn ghost" style="flex:1" id="restartSession">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>
+            다시 촬영
+          </button>
+          <button class="cta-btn" style="flex:1.4" onclick="window.location.href='detail.html'">
+            상세 분석 보기
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="info-strip">
+    <span class="tag">← / → 단계 이동</span>
+    <span class="tag">SPACE 자동 시뮬</span>
+    <span class="tag">R 재시작</span>
+  </div>
+</div>
+
+<script>
+  // ---- State & helpers ----
+  const screens = document.querySelectorAll('.screen');
+  const ctrls = document.querySelectorAll('.ctrl-btn[data-step]');
+  const order = ['setup', 'viewfinder', 'review'];
+  let current = 'setup';
+  let scenarioTimers = [];
+
+  function showScreen(name, pushScenario = true) {
+    screens.forEach(s => s.style.display = s.dataset.screen === name ? 'flex' : 'none');
+    ctrls.forEach(c => c.classList.toggle('active', c.dataset.step === name));
+    current = name;
+    try { localStorage.setItem('sm_capture_step', name); } catch {}
+
+    clearScenario();
+    if (pushScenario) {
+      if (name === 'setup') runSetupScenario();
+      if (name === 'viewfinder') runViewfinderScenario();
+    }
+  }
+  function clearScenario() {
+    scenarioTimers.forEach(t => clearTimeout(t));
+    scenarioTimers = [];
+  }
+  function later(fn, ms) {
+    const t = setTimeout(fn, ms);
+    scenarioTimers.push(t);
+    return t;
+  }
+
+  ctrls.forEach(c => c.addEventListener('click', () => showScreen(c.dataset.step)));
+
+  // Restore
+  try {
+    const saved = localStorage.getItem('sm_capture_step');
+    if (saved && order.includes(saved)) showScreen(saved);
+    else showScreen('setup');
+  } catch { showScreen('setup'); }
+
+  // Keyboard
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const idx = order.indexOf(current);
+    if (e.key === 'ArrowRight' && idx < 2) showScreen(order[idx + 1]);
+    if (e.key === 'ArrowLeft' && idx > 0) showScreen(order[idx - 1]);
+    if (e.key === 'r' || e.key === 'R') { showScreen('setup'); }
+    if (e.key === ' ') { e.preventDefault(); showScreen(current); }
+  });
+
+  // Replay
+  document.getElementById('replayBtn').addEventListener('click', () => showScreen(current));
+
+  // ---- Setup scenario: height check completes after 2s ----
+  function runSetupScenario() {
+    const heightCheck = document.getElementById('heightCheck');
+    const cta = document.getElementById('toViewfinder');
+    heightCheck.classList.remove('done');
+    heightCheck.classList.add('active');
+    heightCheck.querySelector('.check-title').textContent = '허리 높이 맞추기';
+    heightCheck.querySelector('.check-sub').textContent = 'AR 가이드로 자동 감지 중…';
+    heightCheck.querySelector('.check-badge').textContent = '측정중';
+    heightCheck.querySelector('.check-icon').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>';
+    cta.disabled = true;
+
+    later(() => {
+      heightCheck.classList.remove('active');
+      heightCheck.classList.add('done');
+      heightCheck.querySelector('.check-sub').textContent = '완벽합니다';
+      heightCheck.querySelector('.check-badge').textContent = 'OK';
+      heightCheck.querySelector('.check-icon').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      cta.disabled = false;
+    }, 2200);
+  }
+  document.getElementById('toViewfinder').addEventListener('click', () => {
+    if (!document.getElementById('toViewfinder').disabled) showScreen('viewfinder');
+  });
+
+  // ---- Viewfinder scenario: 5s idle → detect → countdown → record → add to session ----
+  function runViewfinderScenario() {
+    const hint = document.getElementById('vfHint');
+    const silhouette = document.getElementById('vfSilhouette');
+    const detected = document.getElementById('vfDetected');
+    const countdown = document.getElementById('vfCountdown');
+    const rec = document.getElementById('vfRec');
+    const captureBtn = document.getElementById('captureBtn');
+    const captureHint = document.getElementById('captureHint');
+    const statusText = document.getElementById('vfStatusText');
+    const currentShot = document.getElementById('currentShot');
+    const strip = document.getElementById('sessionStrip');
+    const toast = document.getElementById('vfToast');
+    const toastText = document.getElementById('toastText');
+
+    // reset
+    hint.style.display = 'block';
+    detected.classList.remove('show');
+    countdown.style.display = 'none';
+    rec.classList.remove('active');
+    captureBtn.classList.remove('recording');
+    captureBtn.classList.add('auto');
+    captureHint.textContent = 'AUTO';
+    silhouette.style.opacity = '0.45';
+    statusText.textContent = '자세 OK · 거리 적정';
+    currentShot.className = 'session-shot live';
+    currentShot.innerHTML = '';
+
+    // 1. Detection after 3s
+    later(() => {
+      hint.style.display = 'none';
+      silhouette.style.opacity = '0.85';
+      statusText.textContent = '● 스윙 감지됨';
+      detected.classList.add('show');
+      captureHint.textContent = 'DETECT';
+    }, 3000);
+
+    // 2. Countdown 3-2-1 after 4.2s
+    later(() => {
+      detected.classList.remove('show');
+      countdown.style.display = 'block';
+      countdown.textContent = '3';
+    }, 4600);
+    later(() => { countdown.textContent = '2'; }, 5400);
+    later(() => { countdown.textContent = '1'; }, 6200);
+
+    // 3. Recording at 7s
+    later(() => {
+      countdown.style.display = 'none';
+      rec.classList.add('active');
+      captureBtn.classList.add('recording');
+      captureBtn.classList.remove('auto');
+      captureHint.textContent = 'REC · 0:03';
+      statusText.textContent = '● 녹화 중';
+    }, 7000);
+
+    later(() => { captureHint.textContent = 'REC · 0:06'; }, 9500);
+
+    // 4. Voice command toast
+    later(() => {
+      toastText.textContent = '"그만" 인식됨';
+      toast.classList.add('show');
+    }, 10500);
+    later(() => { toast.classList.remove('show'); }, 12500);
+
+    // 5. Finish + add to session strip
+    later(() => {
+      rec.classList.remove('active');
+      captureBtn.classList.remove('recording');
+      captureBtn.classList.add('auto');
+      captureHint.textContent = 'AUTO';
+      statusText.textContent = '분석 완료 · 점수 78';
+
+      currentShot.className = 'session-shot';
+      currentShot.innerHTML = '<div class="num">3</div><div class="score">78</div>';
+
+      // Add new empty slot
+      const newEmpty = document.createElement('div');
+      newEmpty.className = 'session-shot live';
+      strip.insertBefore(newEmpty, strip.children[strip.children.length - 1]);
+      document.getElementById('currentShot').id = '';
+      newEmpty.id = 'currentShot';
+    }, 11500);
+
+    // 6. Auto-loop hint toast
+    later(() => {
+      toastText.textContent = '다음 스윙 대기 중…';
+      toast.classList.add('show');
+    }, 13000);
+    later(() => { toast.classList.remove('show'); }, 15000);
+  }
+
+  // Back buttons
+  document.getElementById('backToSetup').addEventListener('click', () => showScreen('setup'));
+  document.getElementById('backToVf').addEventListener('click', () => showScreen('viewfinder'));
+  document.getElementById('restartSession').addEventListener('click', () => showScreen('setup'));
+
+  // Manual capture button click
+  document.getElementById('captureBtn').addEventListener('click', () => {
+    // skip to recording
+    clearScenario();
+    const captureBtn = document.getElementById('captureBtn');
+    const detected = document.getElementById('vfDetected');
+    const countdown = document.getElementById('vfCountdown');
+    const rec = document.getElementById('vfRec');
+    const hint = document.getElementById('vfHint');
+    const captureHint = document.getElementById('captureHint');
+
+    if (captureBtn.classList.contains('recording')) {
+      // stop
+      rec.classList.remove('active');
+      captureBtn.classList.remove('recording');
+      captureBtn.classList.add('auto');
+      captureHint.textContent = 'AUTO';
+      later(() => showScreen('review'), 300);
+    } else {
+      hint.style.display = 'none';
+      detected.classList.remove('show');
+      countdown.style.display = 'none';
+      rec.classList.add('active');
+      captureBtn.classList.add('recording');
+      captureBtn.classList.remove('auto');
+      captureHint.textContent = 'REC';
+    }
+  });
+
+</script>
+</body>
+</html>

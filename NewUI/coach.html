@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SwingMaster · AI 코치 채팅 (Hi-Fi)</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/hifi.css">
+<style>
+  .coach-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 320px;
+    gap: 16px;
+    height: calc(100vh - 40px);
+    min-height: 720px;
+  }
+  .panel {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* --- Conversation list --- */
+  .conv-head {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .conv-search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .conv-filter {
+    display: flex; gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .cf {
+    padding: 4px 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    cursor: pointer;
+  }
+  .cf.on {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .conv-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .conv-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 2px;
+    position: relative;
+  }
+  .conv-item:hover { background: var(--bg-3); }
+  .conv-item.on {
+    background: var(--bg-4);
+  }
+  .conv-item.on::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 10px; bottom: 10px;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .ci-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 3px;
+  }
+  .ci-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ci-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    flex-shrink: 0;
+    margin-left: 6px;
+  }
+  .ci-preview {
+    font-size: 11px;
+    color: var(--text-3);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ci-badges {
+    display: flex; gap: 4px;
+    margin-top: 6px;
+  }
+  .ci-bdg {
+    padding: 1px 6px;
+    background: var(--bg-4);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+  }
+  .ci-bdg.accent { background: var(--accent-dim); color: var(--accent); }
+  .ci-bdg.warn { background: var(--warn-dim); color: var(--warn); }
+
+  /* --- Chat thread --- */
+  .thread-head {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .th-avatar {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #d4ff3a, #5aa9ff);
+    color: #0a0c10;
+    display: grid; place-items: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .th-name {
+    font-size: 15px; font-weight: 700;
+    letter-spacing: -0.01em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .th-name .em {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .th-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.08em;
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 3px;
+  }
+  .pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+  }
+  .th-actions {
+    margin-left: auto;
+    display: flex; gap: 8px;
+  }
+
+  .thread-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex; flex-direction: column;
+    gap: 18px;
+  }
+
+  .day-sep {
+    display: flex; align-items: center; gap: 12px;
+    margin: 6px 0;
+  }
+  .day-sep .line { flex: 1; height: 1px; background: var(--line); }
+  .day-sep .txt {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.12em;
+  }
+
+  .msg-row {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+    max-width: 720px;
+  }
+  .msg-row.me {
+    grid-template-columns: 1fr 32px;
+    margin-left: auto;
+  }
+  .msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #d4ff3a, #5aa9ff);
+    color: #0a0c10;
+    display: grid; place-items: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .msg-row.me .msg-avatar {
+    background: var(--bg-4);
+    color: var(--text-2);
+    font-family: 'Inter', sans-serif;
+    font-style: normal;
+    font-size: 12px;
+    order: 2;
+  }
+  .msg-bubble {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+  .msg-bubble.coach {
+    background: var(--bg-3);
+    border-top-left-radius: 4px;
+  }
+  .msg-row.me .msg-bubble {
+    background: linear-gradient(135deg, #1f2631, #1a1f27);
+    border-top-right-radius: 4px;
+    order: 1;
+  }
+  .msg-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-4);
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+  .msg-row.me .msg-time { text-align: right; }
+
+  /* Attached video card in message */
+  .attach-video {
+    margin-top: 10px;
+    background: var(--bg-4);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+  .av-thumb {
+    aspect-ratio: 16 / 10;
+    border-radius: 6px;
+    background:
+      radial-gradient(ellipse at 50% 60%, #1a2434 0%, #0a0e14 70%);
+    position: relative;
+    overflow: hidden;
+  }
+  .av-thumb svg {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px; height: 48px;
+    color: var(--text-2);
+  }
+  .av-thumb svg path, .av-thumb svg line { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .av-thumb svg circle { fill: currentColor; }
+  .av-thumb .playmark {
+    position: absolute;
+    right: 4px; bottom: 4px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(212,255,58,0.9);
+    display: grid; place-items: center;
+  }
+  .av-meta .t {
+    font-size: 12px; font-weight: 600;
+  }
+  .av-meta .s {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  /* Coach analysis block */
+  .analysis-block {
+    margin-top: 10px;
+    background: linear-gradient(135deg, rgba(212,255,58,0.04), rgba(90,169,255,0.03));
+    border: 1px solid rgba(212,255,58,0.18);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .ab-title {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .ab-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .ab-stat {
+    background: rgba(10,12,16,0.35);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .ab-stat .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .ab-stat .val {
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .ab-stat .val.bad { color: var(--danger); }
+  .ab-stat .val.warn { color: var(--warn); }
+  .ab-stat .val.ok { color: var(--ok); }
+  .ab-stat .val.hi { color: var(--accent); }
+  .ab-stat .delta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--danger);
+    margin-top: 2px;
+  }
+  .ab-stat .delta.ok { color: var(--ok); }
+
+  /* Drill suggestion cards */
+  .drill-chips {
+    display: flex; gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .drill-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 6px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+  }
+  .drill-chip:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .drill-chip .n {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #0a0c10;
+    display: grid; place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .drill-chip .min {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-left: 4px;
+  }
+
+  /* Quick reply chips */
+  .quick-row {
+    display: flex; gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .quick {
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--line-2);
+    border-radius: 100px;
+    font-size: 12px;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quick:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Typing */
+  .typing {
+    display: inline-flex; gap: 4px;
+    padding: 12px 16px;
+  }
+  .typing span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+    animation: tp 1.4s ease-in-out infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes tp {
+    0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  /* Composer */
+  .composer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid var(--line);
+  }
+  .composer-tools {
+    display: flex; gap: 6px;
+    margin-bottom: 10px;
+  }
+  .tool-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-2);
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .tool-btn:hover { border-color: var(--line-3); }
+  .tool-btn.hot {
+    background: var(--accent-dim);
+    border-color: rgba(212,255,58,0.3);
+    color: var(--accent);
+  }
+  .composer-input {
+    background: var(--bg-3);
+    border: 1px solid var(--line-2);
+    border-radius: 14px;
+    padding: 14px 14px 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  .composer-input:focus-within {
+    border-color: var(--accent);
+  }
+  .composer-input textarea {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+    outline: none;
+    line-height: 1.5;
+  }
+  .composer-input textarea::placeholder { color: var(--text-3); }
+  .send-btn {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #0a0c10;
+    border: none;
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  .composer-meta {
+    display: flex; justify-content: space-between;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.06em;
+  }
+  .composer-meta .kbd {
+    background: var(--bg-4);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--text-2);
+  }
+
+  /* Right panel */
+  .rp-section {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rp-section:last-child { border-bottom: none; }
+  .rp-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .rp-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0;
+    font-size: 12px;
+    color: var(--text-2);
+    border-bottom: 1px dashed var(--line);
+  }
+  .rp-row:last-child { border-bottom: none; }
+  .rp-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .rp-val.hi { color: var(--accent); }
+  .rp-val.bad { color: var(--danger); }
+  .rp-focus {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .rp-focus-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .rp-focus-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .rp-focus-bar {
+    height: 4px;
+    background: var(--bg-4);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .rp-focus-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .rp-focus-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 6px;
+    display: flex; justify-content: space-between;
+  }
+
+  .rp-sess {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .rp-sess:hover { border-color: var(--line-3); }
+  .rp-sess-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+  }
+  .rp-sess-name { font-weight: 600; }
+  .rp-sess-score {
+    font-family: 'Playfair Display', serif;
+    font-style: italic; font-weight: 700;
+    font-size: 15px;
+  }
+  .rp-sess-score.hi { color: var(--accent); }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <aside class="sidebar" data-hifi-sidebar="chat"></aside>
+
+  <main class="main" style="padding: 20px 24px;">
+
+    <div class="topbar" style="margin-bottom: 16px;">
+      <div class="crumb">
+        <a href="index.html">와이어프레임</a>
+        <span class="sep">/</span>
+        <span class="now">AI 코치 채팅</span>
+      </div>
+      <div class="topbar-actions">
+        <span class="chip ok mono">온라인 · 평균 응답 4초</span>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+          새 대화
+        </button>
+      </div>
+    </div>
+
+    <div class="coach-layout">
+
+      <!-- ============= LEFT — CONVERSATIONS ============= -->
+      <aside class="panel">
+        <div class="conv-head">
+          <div class="conv-search">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round"/></svg>
+            <span>대화 검색</span>
+          </div>
+          <div class="conv-filter">
+            <div class="cf on">ALL · 18</div>
+            <div class="cf">UNRESOLVED · 2</div>
+            <div class="cf">STARRED · 5</div>
+          </div>
+        </div>
+        <div class="conv-list">
+
+          <div class="conv-item on">
+            <div class="ci-head">
+              <div class="ci-title">임팩트 스파인 각도 교정</div>
+              <div class="ci-time">지금</div>
+            </div>
+            <div class="ci-preview">영상 분석 완료. 척추 각도가 어드레스 대비 6° 더 기울어지고 있어요 — 미러 드릴 처방 드렸습니다.</div>
+            <div class="ci-badges">
+              <span class="ci-bdg accent">PRESCRIPTION</span>
+              <span class="ci-bdg">#047</span>
+            </div>
+          </div>
+
+          <div class="conv-item">
+            <div class="ci-head">
+              <div class="ci-title">템포 게이트 · 주간 리뷰</div>
+              <div class="ci-time">어제</div>
+            </div>
+            <div class="ci-preview">이번 주 템포 비율 2.4 → 2.7로 개선되었어요. 다음 단계 드릴 준비 완료.</div>
+            <div class="ci-badges">
+              <span class="ci-bdg">WEEKLY</span>
+            </div>
+          </div>
+
+          <div class="conv-item">
+            <div class="ci-head">
+              <div class="ci-title">7I vs 드라이버 차이 질문</div>
+              <div class="ci-time">2일 전</div>
+            </div>
+            <div class="ci-preview">드라이버에서만 슬라이스가 나오는 이유는 어택 앵글과 페이스 앵글의 관계 때문인데요...</div>
+            <div class="ci-badges">
+              <span class="ci-bdg">Q&amp;A</span>
+            </div>
+          </div>
+
+          <div class="conv-item">
+            <div class="ci-head">
+              <div class="ci-title">라운드 전 체크리스트</div>
+              <div class="ci-time">3일 전</div>
+            </div>
+            <div class="ci-preview">내일 라운드 앞두고 있으시다면 우선 워밍업 드릴 2개를 추천드려요.</div>
+            <div class="ci-badges">
+              <span class="ci-bdg">TIP</span>
+            </div>
+          </div>
+
+          <div class="conv-item">
+            <div class="ci-head">
+              <div class="ci-title">허리 통증 케어 문의</div>
+              <div class="ci-time">5일 전</div>
+            </div>
+            <div class="ci-preview">스윙 후 왼쪽 허리가 아프신가요? 백스윙 시 과도한 회전일 가능성이 높은데...</div>
+            <div class="ci-badges">
+              <span class="ci-bdg warn">OPEN</span>
+            </div>
+          </div>
+
+          <div class="conv-item">
+            <div class="ci-head">
+              <div class="ci-title">그립 교정 · 인터락/오버랩</div>
+              <div class="ci-time">1주 전</div>
+            </div>
+            <div class="ci-preview">손 사이즈가 M이시면 오버랩이 잘 맞을 가능성이 큽니다. 사진 보내주시면...</div>
+            <div class="ci-badges">
+              <span class="ci-bdg">ADVICE</span>
+            </div>
+          </div>
+
+          <div class="conv-item">
+            <div class="ci-head">
+              <div class="ci-title">1주 목표 설정</div>
+              <div class="ci-time">1주 전</div>
+            </div>
+            <div class="ci-preview">이번 주 목표: 템포 B → A · 세션 5회 · 드릴 15분/일</div>
+            <div class="ci-badges">
+              <span class="ci-bdg accent">GOAL</span>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- ============= CENTER — THREAD ============= -->
+      <section class="panel">
+        <div class="thread-head">
+          <div class="th-avatar">C</div>
+          <div>
+            <div class="th-name">Coach <span class="em">AI</span> <span class="chip mono accent" style="font-size: 9px;">v2.0</span></div>
+            <div class="th-status"><span class="pulse"></span>ONLINE · 영상 분석 가능 · 최근 세션 참조</div>
+          </div>
+          <div class="th-actions">
+            <button class="btn icon" title="북마크"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15 9 22 9.3 17 14 18 21 12 18 6 21 7 14 2 9.3 9 9 12 2"/></svg></button>
+            <button class="btn icon" title="실제 코치 연결"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
+          </div>
+        </div>
+
+        <div class="thread-body">
+
+          <div class="day-sep">
+            <div class="line"></div>
+            <div class="txt">오늘 · 2026.04.19</div>
+            <div class="line"></div>
+          </div>
+
+          <!-- Me: video upload -->
+          <div class="msg-row me">
+            <div class="msg-avatar">나</div>
+            <div>
+              <div class="msg-bubble">
+                방금 연습장에서 7번 아이언 10개 쳤어요. 임팩트가 어제보다 답답한 느낌인데 한 번 봐주세요.
+                <div class="attach-video">
+                  <div class="av-thumb">
+                    <svg viewBox="0 0 40 50">
+                      <circle cx="20" cy="6" r="4"/>
+                      <line x1="20" y1="10" x2="22" y2="30"/>
+                      <line x1="12" y1="18" x2="32" y2="22"/>
+                      <line x1="32" y1="22" x2="24" y2="40"/>
+                      <line x1="15" y1="30" x2="12" y2="46"/>
+                      <line x1="27" y1="30" x2="30" y2="46"/>
+                    </svg>
+                    <div class="playmark"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="color:#0a0c10"><polygon points="6 4 20 12 6 20 6 4"/></svg></div>
+                  </div>
+                  <div class="av-meta">
+                    <div class="t">session_047.mp4</div>
+                    <div class="s">0:00.88 · 7I · 240fps · 8.4MB</div>
+                  </div>
+                </div>
+              </div>
+              <div class="msg-time">14:02</div>
+            </div>
+          </div>
+
+          <!-- Coach: analysis -->
+          <div class="msg-row">
+            <div class="msg-avatar">C</div>
+            <div>
+              <div class="msg-bubble coach">
+                영상 잘 받았습니다. 분석 끝났어요. 3번 스윙을 기준으로 말씀드릴게요 — <strong style="color: var(--accent)">어제 대비 임팩트 스파인이 +3° 더 기울어졌습니다</strong>. 피곤해서 상체에 의존하는 패턴이 나오고 있어요.
+
+                <div class="analysis-block">
+                  <div class="ab-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke-linecap="round"/></svg>
+                    SESSION #047 · 자동 분석 요약
+                  </div>
+                  <div class="ab-stats">
+                    <div class="ab-stat">
+                      <div class="lbl">스파인 각도</div>
+                      <div class="val bad">+6°</div>
+                      <div class="delta">어제 +3°</div>
+                    </div>
+                    <div class="ab-stat">
+                      <div class="lbl">체중 좌측</div>
+                      <div class="val warn">62%</div>
+                      <div class="delta">목표 78%</div>
+                    </div>
+                    <div class="ab-stat">
+                      <div class="lbl">템포 비율</div>
+                      <div class="val ok">2.7 : 1</div>
+                      <div class="delta ok">+0.3 개선</div>
+                    </div>
+                  </div>
+                  <div style="font-size: 12px; color: var(--text-2); line-height: 1.5;">
+                    템포는 지난주 대비 확실히 좋아지고 있어요. 하지만 오늘은 <strong style="color: var(--danger)">스파인 각도</strong>가 주요 이슈입니다. 피로 누적이 원인일 가능성이 높습니다 — 세션당 공 수를 20개 이하로 줄이고, 30초씩 쉬어가시길 권장드립니다.
+                  </div>
+                </div>
+
+                오늘 상태에선 강도 높은 드릴보다 <strong>안정화 드릴 2개</strong>를 권장해요:
+
+                <div class="drill-chips">
+                  <a class="drill-chip" href="drill.html">
+                    <span class="n">1</span>
+                    미러 임팩트 정지
+                    <span class="min">· 12min</span>
+                  </a>
+                  <a class="drill-chip" href="drill.html">
+                    <span class="n">2</span>
+                    발 폭 1.5배 셋업
+                    <span class="min">· 8min</span>
+                  </a>
+                </div>
+
+              </div>
+              <div class="msg-time">14:03 · 분석 4초 소요</div>
+            </div>
+          </div>
+
+          <!-- Me: question -->
+          <div class="msg-row me">
+            <div class="msg-avatar">나</div>
+            <div>
+              <div class="msg-bubble">
+                스파인이 기울어지는 건 제가 계속 고치려는 부분인데, 체중이 덜 실리는 것도 같은 원인인가요?
+              </div>
+              <div class="msg-time">14:05</div>
+            </div>
+          </div>
+
+          <!-- Coach: explanation -->
+          <div class="msg-row">
+            <div class="msg-avatar">C</div>
+            <div>
+              <div class="msg-bubble coach">
+                예리하게 연결하셨네요. 네, <strong style="color: var(--accent)">같은 뿌리</strong>에서 오는 증상입니다. 다운스윙에서 하체 회전이 늦으면 상체가 먼저 움직이면서 <em>스파인이 타깃 쪽으로 기울어지고</em>, 동시에 <em>체중이 왼쪽으로 다 옮겨가지 못합니다</em>.
+                <br><br>
+                즉 고쳐야 할 단 하나는 <strong>"하체 회전을 먼저 시작하는 감각"</strong>이고, 그게 잡히면 두 지표가 동시에 좋아집니다.
+
+                <div class="quick-row">
+                  <button class="quick">더 자세한 설명</button>
+                  <button class="quick">연관 드릴 보기</button>
+                  <button class="quick">비디오로 시범</button>
+                  <button class="quick">실제 코치에게 연결</button>
+                </div>
+              </div>
+              <div class="msg-time">14:05</div>
+            </div>
+          </div>
+
+          <!-- Me typing indicator context -->
+          <div class="msg-row">
+            <div class="msg-avatar">C</div>
+            <div>
+              <div class="msg-bubble coach" style="padding: 0; background: transparent; border: none;">
+                <div class="typing">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Composer -->
+        <div class="composer">
+          <div class="composer-tools">
+            <button class="tool-btn hot">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              영상 첨부
+            </button>
+            <button class="tool-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+              세션 참조
+            </button>
+            <button class="tool-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              빠른 질문
+            </button>
+            <button class="tool-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              실제 코치
+            </button>
+          </div>
+          <div class="composer-input">
+            <textarea placeholder="코치에게 질문하거나 영상을 드래그해서 올려주세요..." rows="2">하체가 먼저 돌게 하는 가장 쉬운 드릴 하나만 추천</textarea>
+            <button class="send-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+            </button>
+          </div>
+          <div class="composer-meta">
+            <span><span class="kbd">⏎</span> 전송 · <span class="kbd">⇧⏎</span> 줄바꿈</span>
+            <span>AI 응답 · 의료 조언이 아닙니다</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============= RIGHT — CONTEXT ============= -->
+      <aside class="panel">
+        <div class="rp-section">
+          <div class="rp-title">현재 포커스</div>
+          <div class="rp-focus">
+            <div class="rp-focus-sub">THIS WEEK</div>
+            <div class="rp-focus-title">템포 B → A</div>
+            <div class="rp-focus-bar">
+              <div class="rp-focus-bar-fill" style="width: 65%"></div>
+            </div>
+            <div class="rp-focus-meta">
+              <span>3 / 5 세션</span>
+              <span style="color: var(--accent)">65%</span>
+            </div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-3); line-height: 1.5;">
+            이 주제로 대화 중이에요. 관련 없는 질문을 하셔도 괜찮아요 — AI가 자동으로 분류합니다.
+          </div>
+        </div>
+
+        <div class="rp-section">
+          <div class="rp-title">최근 참조 세션</div>
+          <div class="rp-sess">
+            <div class="rp-sess-date">04.19</div>
+            <div class="rp-sess-name">#047 · 7I</div>
+            <div class="rp-sess-score">78</div>
+          </div>
+          <div class="rp-sess">
+            <div class="rp-sess-date">04.18</div>
+            <div class="rp-sess-name">#046 · 7I</div>
+            <div class="rp-sess-score hi">82</div>
+          </div>
+          <div class="rp-sess">
+            <div class="rp-sess-date">04.17</div>
+            <div class="rp-sess-name">#045 · DR</div>
+            <div class="rp-sess-score">74</div>
+          </div>
+          <div class="rp-sess">
+            <div class="rp-sess-date">04.15</div>
+            <div class="rp-sess-name">#044 · 7I</div>
+            <div class="rp-sess-score">76</div>
+          </div>
+        </div>
+
+        <div class="rp-section">
+          <div class="rp-title">프로필 컨텍스트</div>
+          <div class="rp-row">
+            <span>핸디캡</span>
+            <span class="rp-val">16</span>
+          </div>
+          <div class="rp-row">
+            <span>주요 미스</span>
+            <span class="rp-val">슬라이스</span>
+          </div>
+          <div class="rp-row">
+            <span>신체</span>
+            <span class="rp-val">172cm · 오른손</span>
+          </div>
+          <div class="rp-row">
+            <span>평균 템포</span>
+            <span class="rp-val">2.7 : 1</span>
+          </div>
+          <div class="rp-row">
+            <span>부상 이력</span>
+            <span class="rp-val bad">허리 주의</span>
+          </div>
+        </div>
+
+        <div class="rp-section">
+          <div class="rp-title">처방 요약</div>
+          <div style="font-size: 12px; color: var(--text-2); line-height: 1.6;">
+            지난 14일 · <strong style="color: var(--text)">7개 드릴</strong> 처방 · <strong style="color: var(--accent)">5개 완료</strong>. 평균 효과 <span class="serif" style="color: var(--accent)">+4.2점</span>
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;">
+            <span class="chip mono">템포 ×3</span>
+            <span class="chip mono">임팩트 ×2</span>
+            <span class="chip mono">셋업 ×2</span>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="components/hifi-sidebar.js"></script>
+</body>
+</html>
