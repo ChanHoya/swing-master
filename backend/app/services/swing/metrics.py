@@ -7,8 +7,11 @@ swing/metrics.py — 포즈 좌표에서 골프 스윙 지표를 계산한다.
 from __future__ import annotations
 
 import math
+from typing import Literal
 
 import numpy as np
+
+from app.services.swing.types import MetricValue, PoseSequence
 
 # ── MediaPipe BlazePose 33점 인덱스 ────────────────────────────────────────
 NOSE = 0
@@ -212,3 +215,158 @@ def tempo_ratio(
     if backswing <= 0.0 or downswing <= 0.0:
         return math.nan
     return backswing / downswing
+
+
+# ── 촬영 각도별 계산 가능 지표 ─────────────────────────────────────────────
+CameraAngle = Literal["down_the_line", "face_on"]
+
+_BOTH = frozenset({"down_the_line", "face_on"})
+_DTL = frozenset({"down_the_line"})
+_FACE = frozenset({"face_on"})
+
+METRIC_ANGLES: dict[str, frozenset[str]] = {
+    "spine_angle": _BOTH,
+    "knee_flex": _BOTH,
+    "tempo_ratio": _BOTH,
+    # 수평 회전은 깊이(z) 성분이 필요해 정면에서는 신뢰할 수 없다
+    "shoulder_rotation": _DTL,
+    "hip_rotation": _DTL,
+    "x_factor": _DTL,
+    # 좌우 이동은 정면에서만 화면에 드러난다
+    "head_movement": _FACE,
+    "weight_shift": _FACE,
+}
+
+METRIC_UNITS: dict[str, str] = {
+    "spine_angle": "°",
+    "knee_flex": "°",
+    "tempo_ratio": ":1",
+    "shoulder_rotation": "°",
+    "hip_rotation": "°",
+    "x_factor": "°",
+    "head_movement": "cm",
+    "weight_shift": "%",
+}
+
+# 각 지표가 어느 랜드마크를 쓰는지 — 신뢰도 계산에 쓴다
+_METRIC_LANDMARKS: dict[str, tuple[int, ...]] = {
+    "spine_angle": (L_SHOULDER, R_SHOULDER, L_HIP, R_HIP),
+    "knee_flex": (L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE),
+    "tempo_ratio": (),
+    "shoulder_rotation": (L_SHOULDER, R_SHOULDER),
+    "hip_rotation": (L_HIP, R_HIP),
+    "x_factor": (L_SHOULDER, R_SHOULDER, L_HIP, R_HIP),
+    "head_movement": (NOSE, L_SHOULDER, R_SHOULDER),
+    "weight_shift": (L_HIP, R_HIP, L_ANKLE, R_ANKLE),
+}
+
+# 각 지표의 신뢰도를 어느 단계 프레임에서 잴 것인가
+_METRIC_PHASES: dict[str, tuple[str, ...]] = {
+    "spine_angle": ("address",),
+    "knee_flex": ("address",),
+    "tempo_ratio": ("address", "top", "impact"),
+    "shoulder_rotation": ("address", "top"),
+    "hip_rotation": ("address", "top"),
+    "x_factor": ("address", "top"),
+    "head_movement": ("address", "impact"),
+    "weight_shift": ("address", "impact"),
+}
+
+
+def _confidence_for(
+    name: str, seq: PoseSequence, phases: dict[str, int]
+) -> float:
+    """해당 지표가 쓰는 랜드마크들의 visibility 최솟값.
+
+    랜드마크를 쓰지 않는 지표(tempo_ratio)는 1.0으로 둔다.
+    """
+    landmarks = _METRIC_LANDMARKS[name]
+    if not landmarks:
+        return 1.0
+    values = [
+        float(seq.visibility[phases[phase], lm])
+        for phase in _METRIC_PHASES[name]
+        if phase in phases
+        for lm in landmarks
+    ]
+    return min(values) if values else 0.0
+
+
+def compute_metrics(
+    seq: PoseSequence,
+    phases: dict[str, int],
+    camera_angle: str,
+) -> dict[str, MetricValue]:
+    """포즈 시퀀스에서 지표 8개를 계산한다.
+
+    반환 키는 촬영 각도와 무관하게 항상 8개다.
+    계산할 수 없는 경우를 두 가지로 구분해 표현한다.
+      - 촬영 각도상 불가         → MetricValue.unmeasurable
+      - 각도는 맞지만 계산 실패  → MetricValue.failed
+
+    어느 경우에도 숫자를 지어내지 않는다 (스펙 §3.4).
+    """
+    addr_i = phases["address"]
+    top_i = phases["top"]
+    impact_i = phases["impact"]
+
+    def allowed(name: str) -> bool:
+        return camera_angle in METRIC_ANGLES[name]
+
+    raw: dict[str, float] = {}
+    if allowed("shoulder_rotation"):
+        raw["shoulder_rotation"] = shoulder_rotation(seq.world, addr_i, top_i)
+    if allowed("hip_rotation"):
+        raw["hip_rotation"] = hip_rotation(seq.world, addr_i, top_i)
+    if allowed("x_factor"):
+        s = raw.get("shoulder_rotation", math.nan)
+        h = raw.get("hip_rotation", math.nan)
+        raw["x_factor"] = (
+            math.nan if math.isnan(s) or math.isnan(h) else x_factor(s, h)
+        )
+    if allowed("knee_flex"):
+        raw["knee_flex"] = knee_flex(seq.world, addr_i)
+    if allowed("spine_angle"):
+        raw["spine_angle"] = spine_angle(seq.world, addr_i)
+    if allowed("head_movement"):
+        raw["head_movement"] = head_movement_cm(seq.xy_px, addr_i, impact_i)
+    if allowed("weight_shift"):
+        raw["weight_shift"] = weight_shift_pct(seq.xy_px, addr_i, impact_i)
+    if allowed("tempo_ratio"):
+        raw["tempo_ratio"] = tempo_ratio(
+            seq.frame_indices, seq.fps, addr_i, top_i, impact_i
+        )
+
+    result: dict[str, MetricValue] = {}
+    for name, unit in METRIC_UNITS.items():
+        if not allowed(name):
+            result[name] = MetricValue.unmeasurable(unit)
+            continue
+        value = raw.get(name, math.nan)
+        if math.isnan(value) or math.isinf(value):
+            result[name] = MetricValue.failed(unit)
+            continue
+        result[name] = MetricValue(
+            value=round(float(value), 2),
+            confidence=round(_confidence_for(name, seq, phases), 3),
+            unit=unit,
+            measurable=True,
+        )
+    return result
+
+
+def metrics_to_json(metrics: dict[str, MetricValue]) -> dict:
+    """DB의 JSON 컬럼과 API 응답에 쓸 직렬화 형태.
+
+    value 가 None 인 것도 그대로 담는다. 키를 빼면 소비하는 쪽에서
+    다시 기본값을 채우려는 유혹이 생긴다.
+    """
+    return {
+        name: {
+            "value": m.value,
+            "confidence": m.confidence,
+            "unit": m.unit,
+            "measurable": m.measurable,
+        }
+        for name, m in metrics.items()
+    }
