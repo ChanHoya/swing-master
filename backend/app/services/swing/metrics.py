@@ -24,8 +24,14 @@ SHOULDER_WIDTH_CM: float = 40.0
 
 
 def wrap_deg(deg: float) -> float:
-    """각도를 [-180, 180] 범위로 정규화한다."""
-    return (deg + 180.0) % 360.0 - 180.0
+    """각도를 [-180, 180] 범위로 정규화한다.
+
+    나머지 연산만 쓰면 180도가 -180도로 떨어진다. 같은 각도이긴 하지만
+    계약이 180을 포함한다고 해 놓고 못 돌려주면 읽는 쪽이 헷갈리므로
+    경계값만 양수로 맞춘다.
+    """
+    wrapped = (deg + 180.0) % 360.0 - 180.0
+    return 180.0 if wrapped == -180.0 else wrapped
 
 
 def horizontal_angle(p_left: np.ndarray, p_right: np.ndarray) -> float:
