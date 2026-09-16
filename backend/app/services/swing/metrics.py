@@ -185,3 +185,30 @@ def weight_shift_pct(xy_px: np.ndarray, addr_i: int, impact_i: int) -> float:
     pelvis_addr = (float(addr[L_HIP][0]) + float(addr[R_HIP][0])) / 2.0
     pelvis_impact = (float(impact[L_HIP][0]) + float(impact[R_HIP][0])) / 2.0
     return abs(pelvis_impact - pelvis_addr) / stance_px * 100.0
+
+
+# ── 템포 ──────────────────────────────────────────────────────────────────
+def tempo_ratio(
+    frame_indices: np.ndarray,
+    fps: float,
+    addr_i: int,
+    top_i: int,
+    impact_i: int,
+) -> float:
+    """백스윙 시간 ÷ 다운스윙 시간.
+
+    배열 인덱스가 아니라 원본 프레임 번호와 fps로 실제 초를 구한다.
+    프레임을 건너뛰며 샘플링하므로 인덱스 차이는 시간에 비례하지 않는다.
+    어느 구간이든 길이가 0이면 NaN.
+    """
+    if fps <= 0.0:
+        return math.nan
+    t_addr = float(frame_indices[addr_i]) / fps
+    t_top = float(frame_indices[top_i]) / fps
+    t_impact = float(frame_indices[impact_i]) / fps
+
+    backswing = t_top - t_addr
+    downswing = t_impact - t_top
+    if backswing <= 0.0 or downswing <= 0.0:
+        return math.nan
+    return backswing / downswing
