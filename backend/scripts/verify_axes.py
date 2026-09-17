@@ -26,7 +26,7 @@ from app.services.swing.metrics import (  # noqa: E402
     L_SHOULDER,
     R_HIP,
     R_SHOULDER,
-    horizontal_angle,
+    rotation_between,
 )
 from app.services.swing.pose import extract_sequence  # noqa: E402
 
@@ -54,11 +54,17 @@ def main(video_path: str) -> int:
     print(f"  판정: {'통과' if ok2 else '실패 — 원점 가정 재검토'}")
     passed &= ok2
 
-    angles = [horizontal_angle(f[L_SHOULDER], f[R_SHOULDER]) for f in seq.world]
-    span = max(angles) - min(angles)
-    print("\n[가정 3] z축이 깊이 → 스윙 중 어깨 수평각이 크게 변한다")
-    print(f"  최소 {min(angles):+.1f}°, 최대 {max(angles):+.1f}°, 변화폭 {span:.1f}°")
-    ok3 = span > 30.0
+    # 원시 각도의 max-min 을 쓰면 안 된다. atan2 가 ±180 경계를 넘나들면
+    # 회전이 없어도 358도처럼 보여 무조건 통과한다(되감김 거짓 양성).
+    # 첫 프레임 기준 상대 회전량으로 재야 실제 회전을 본다.
+    turns = [
+        rotation_between(seq.world[0], f, L_SHOULDER, R_SHOULDER) for f in seq.world
+    ]
+    turns = [t for t in turns if not np.isnan(t)]
+    max_turn = max(turns) if turns else 0.0
+    print("\n[가정 3] z축이 깊이 → 스윙 중 어깨가 실제로 회전한다")
+    print(f"  첫 프레임 대비 최대 회전량 {max_turn:.1f}°")
+    ok3 = max_turn > 30.0
     print(f"  판정: {'통과' if ok3 else '실패 — 축 해석 재검토'}")
     passed &= ok3
 
