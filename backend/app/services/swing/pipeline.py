@@ -25,6 +25,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionFactory
 from app.core.storage import upload_fileobj
 from app.models import Analysis, Upload
+from app.services.feedback.llm import polish
 from app.services.feedback.rules import evaluate
 from app.services.swing.metrics import compute_metrics, metrics_to_json
 from app.services.swing.overlay import render_overlay
@@ -144,10 +145,10 @@ async def process_pose_estimation(upload_id: uuid.UUID) -> None:
                 None, _render_phase_overlays, video_path, seq, phases
             )
 
-            # 규칙 엔진이 진단·점수·드릴을 확정한다. LLM 없이 완결된다.
-            # TODO(Task 14): 여기서 evaluate() 결과 문장을 LLM으로 다듬는다.
+            # 규칙 엔진이 진단·점수·드릴을 확정한다. LLM은 문장만 다듬으며,
+            # 실패해도 evaluate() 결과가 그대로 나가므로 서비스가 멈추지 않는다.
             metrics_only = {k: v for k, v in metrics_payload.items() if k != "_meta"}
-            feedback_data = evaluate(metrics_only)
+            feedback_data = await polish(evaluate(metrics_only))
 
             async def upload_img(phase: str, img_bytes: bytes):
                 key = f"overlays/{upload_id.hex}_{phase}.jpg"
