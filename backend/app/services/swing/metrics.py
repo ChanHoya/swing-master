@@ -237,6 +237,23 @@ METRIC_ANGLES: dict[str, frozenset[str]] = {
     "weight_shift": _FACE,
 }
 
+# 물리적으로 말이 되는 범위. 벗어나면 값을 버리고 측정 실패로 돌린다.
+#
+# 촬영 각도를 잘못 고르면 게이팅을 통과해도 쓰레기 값이 나온다. 측면 영상에
+# face_on 을 적용하면 어깨·발목이 화면상 겹쳐 분모(픽셀 거리)가 0에 가까워지고
+# 환산 배율이 폭발한다. 실측에서 head_movement 141cm, weight_shift 281% 가 나왔다.
+# 믿을 수 없는 값은 보여주지 않는 편이 낫다 — 가짜 기본값 금지와 같은 원칙이다.
+METRIC_LIMITS: dict[str, tuple[float, float]] = {
+    "spine_angle": (0.0, 90.0),
+    "knee_flex": (0.0, 90.0),
+    "shoulder_rotation": (0.0, 180.0),
+    "hip_rotation": (0.0, 180.0),
+    "x_factor": (-90.0, 120.0),
+    "head_movement": (0.0, 30.0),  # 30cm 넘게 움직였다면 환산이 깨진 것이다
+    "weight_shift": (0.0, 100.0),  # 골반이 스탠스 폭보다 더 갈 수는 없다
+    "tempo_ratio": (0.3, 10.0),
+}
+
 METRIC_UNITS: dict[str, str] = {
     "spine_angle": "°",
     "knee_flex": "°",
@@ -344,6 +361,11 @@ def compute_metrics(
             continue
         value = raw.get(name, math.nan)
         if math.isnan(value) or math.isinf(value):
+            result[name] = MetricValue.failed(unit)
+            continue
+        low, high = METRIC_LIMITS[name]
+        if not (low <= value <= high):
+            # 계산은 됐지만 물리적으로 불가능한 값이다. 믿을 수 없으므로 버린다.
             result[name] = MetricValue.failed(unit)
             continue
         result[name] = MetricValue(

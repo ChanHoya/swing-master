@@ -152,3 +152,30 @@ def test_metrics_to_json_is_serialisable_and_keeps_none():
     encoded = json.dumps(payload)  # 예외가 나면 실패
     assert json.loads(encoded)["shoulder_rotation"]["value"] is None
     assert json.loads(encoded)["shoulder_rotation"]["measurable"] is False
+
+
+def test_impossible_value_is_rejected_as_failed():
+    """계산은 됐지만 물리적으로 불가능한 값은 버린다.
+
+    측면 영상에 face_on 을 적용하면 어깨 픽셀 폭이 0에 가까워져
+    head_movement 가 141cm 처럼 폭발한다. 실측에서 관찰된 현상이다.
+    """
+    from app.services.swing.metrics import METRIC_LIMITS
+
+    seq = _realistic_sequence()
+    # 어깨를 거의 겹치게 만들어 환산 배율을 폭발시킨다
+    seq.xy_px[:, L_SHOULDER] = (499.0, 300.0)
+    seq.xy_px[:, R_SHOULDER] = (500.0, 300.0)
+    result = compute_metrics(seq, PHASES, "face_on")
+
+    assert result["head_movement"].value is None
+    assert result["head_movement"].measurable is True  # 각도는 맞았으나 실패
+    assert METRIC_LIMITS["head_movement"][1] == 30.0
+
+
+def test_limits_cover_all_eight_metrics():
+    from app.services.swing.metrics import METRIC_LIMITS
+
+    assert set(METRIC_LIMITS) == ALL_METRICS
+    for name, (low, high) in METRIC_LIMITS.items():
+        assert low < high, name

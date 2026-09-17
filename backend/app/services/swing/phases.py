@@ -137,11 +137,29 @@ def detect_phases(seq: PoseSequence) -> dict[str, int]:
     search_hi = max(search_lo + 1, impact)
     top = search_lo + int(np.argmin(wrist_y[search_lo:search_hi]))
 
-    quiet_threshold = float(smoothed.mean()) * 0.4
+    # 피니시 = 임팩트 이후 모션이 처음으로 잦아드는 지점.
+    #
+    # 원래 코드는 뒤에서부터 거꾸로 훑어 "마지막으로 모션이 있던 곳"을 찾았다.
+    # 그러면 스윙이 끝난 뒤의 잡움직임(클럽 내리기, 자리 이동)을 집어서
+    # 피니시가 영상 끝으로 밀린다. 실측 영상에서 실제 피니시 3.97초를
+    # 10.97초로 잡았고, 팔로우스루도 덩달아 6.57초로 틀어졌다.
+    # 스윙은 임팩트 직후에 끝나므로 앞에서부터 찾는 것이 맞다.
+    # 임팩트 후 1초를 넘는 지점은 스윙이 아니다. 골프 팔로우스루는 그 안에 끝난다.
+    # 이 상한이 없으면 스윙이 끝난 뒤의 잡움직임(클럽 내리기, 자리 이동)까지
+    # 스윙으로 삼아 피니시가 영상 끝으로 밀린다.
+    # 스무딩된 모션은 다운스윙 스파이크가 번져 들어가므로 원본 모션으로 판정한다.
+    impact_frame = float(seq.frame_indices[impact])
+    latest_frame = impact_frame + seq.fps  # 임팩트 + 1초
+    quiet_threshold = float(motion.mean()) * 0.4
+
     finish = n - 1
-    for k in range(len(smoothed) - 1, impact_m, -1):
-        if smoothed[k] > quiet_threshold:
-            finish = clamp(k + 1)
+    for k in range(impact_m + 1, len(motion)):
+        candidate = clamp(k + 1)
+        if float(seq.frame_indices[candidate]) > latest_frame:
+            finish = candidate
+            break
+        if motion[k] < quiet_threshold:
+            finish = candidate
             break
 
     # 단조 증가를 보장한다. 어긋나면 지표 전부가 틀어진다.
