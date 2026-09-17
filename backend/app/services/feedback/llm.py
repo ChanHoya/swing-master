@@ -64,6 +64,39 @@ async def _request(prompt: str, api_key: str) -> dict:
     raise RuntimeError(f"모든 모델 실패: {last_error}")
 
 
+def _as_list(value: object) -> list:
+    """polished[key] 가 리스트가 아니면 빈 리스트로 취급한다.
+
+    dict.get(key, [])는 키가 '없을' 때만 기본값을 준다. LLM이
+    {"top_issues": null} 처럼 키는 있지만 타입이 틀린 값을 보내면
+    None 이 그대로 나와 zip(list, None) 이 TypeError 를 던진다.
+    신뢰할 수 없는 응답이므로 존재 여부가 아니라 타입으로 걸러야 한다.
+    """
+    return value if isinstance(value, list) else []
+
+
+def _merge(rule_result: dict, polished: dict) -> dict:
+    """규칙 엔진이 확정한 값은 LLM이 덮어쓸 수 없다.
+
+    polished 는 신뢰할 수 없는 입력이므로 각 필드를 타입 검증한 뒤에만 쓴다.
+    """
+    result = dict(rule_result)
+    if isinstance(polished.get("encouragement"), str):
+        result["encouragement"] = polished["encouragement"]
+
+    result["top_issues"] = [dict(issue) for issue in result.get("top_issues", [])]
+    for target, source in zip(result["top_issues"], _as_list(polished.get("top_issues"))):
+        if isinstance(source, dict) and isinstance(source.get("feedback"), str):
+            target["feedback"] = source["feedback"]
+
+    result["drills"] = [dict(drill) for drill in result.get("drills", [])]
+    for target, source in zip(result["drills"], _as_list(polished.get("drills"))):
+        if isinstance(source, dict) and isinstance(source.get("tip"), str):
+            target["tip"] = source["tip"]
+
+    return result
+
+
 async def polish(rule_result: dict) -> dict:
     """문장만 다듬은 결과를 돌려준다. 실패하면 입력 그대로."""
     api_key = _api_key()
@@ -88,19 +121,8 @@ async def polish(rule_result: dict) -> dict:
         logger.warning("LLM 응답이 JSON 객체가 아님 — 규칙 결과 사용")
         return rule_result
 
-    # 규칙 엔진이 확정한 값은 LLM이 덮어쓸 수 없다.
-    result = dict(rule_result)
-    if isinstance(polished.get("encouragement"), str):
-        result["encouragement"] = polished["encouragement"]
-
-    result["top_issues"] = [dict(issue) for issue in result.get("top_issues", [])]
-    for target, source in zip(result["top_issues"], polished.get("top_issues", [])):
-        if isinstance(source, dict) and isinstance(source.get("feedback"), str):
-            target["feedback"] = source["feedback"]
-
-    result["drills"] = [dict(drill) for drill in result.get("drills", [])]
-    for target, source in zip(result["drills"], polished.get("drills", [])):
-        if isinstance(source, dict) and isinstance(source.get("tip"), str):
-            target["tip"] = source["tip"]
-
-    return result
+    try:
+        return _merge(rule_result, polished)
+    except Exception as exc:  # noqa: BLE001 - 신뢰할 수 없는 응답이므로 무엇이 와도 죽지 않는다
+        logger.warning("LLM 응답 병합 실패 — 규칙 결과 사용: %s", exc)
+        return rule_result
