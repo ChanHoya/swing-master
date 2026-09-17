@@ -243,15 +243,18 @@ METRIC_ANGLES: dict[str, frozenset[str]] = {
 # face_on 을 적용하면 어깨·발목이 화면상 겹쳐 분모(픽셀 거리)가 0에 가까워지고
 # 환산 배율이 폭발한다. 실측에서 head_movement 141cm, weight_shift 281% 가 나왔다.
 # 믿을 수 없는 값은 보여주지 않는 편이 낫다 — 가짜 기본값 금지와 같은 원칙이다.
+# 상한은 사람 몸이 실제로 낼 수 있는 값을 기준으로 잡는다. 처음에 회전 상한을
+# 180도로 뒀더니 어깨 148도·힙 105도짜리 결과가 그대로 통과했다. 사람 어깨는
+# 최대 110도쯤 돌아간다. 상한이 헐거우면 검사가 있으나 마나다.
 METRIC_LIMITS: dict[str, tuple[float, float]] = {
-    "spine_angle": (0.0, 90.0),
-    "knee_flex": (0.0, 90.0),
-    "shoulder_rotation": (0.0, 180.0),
-    "hip_rotation": (0.0, 180.0),
-    "x_factor": (-90.0, 120.0),
+    "spine_angle": (0.0, 70.0),
+    "knee_flex": (0.0, 70.0),
+    "shoulder_rotation": (0.0, 120.0),  # 프로도 100도 안팎이다
+    "hip_rotation": (0.0, 90.0),
+    "x_factor": (-30.0, 90.0),
     "head_movement": (0.0, 30.0),  # 30cm 넘게 움직였다면 환산이 깨진 것이다
     "weight_shift": (0.0, 100.0),  # 골반이 스탠스 폭보다 더 갈 수는 없다
-    "tempo_ratio": (0.3, 10.0),
+    "tempo_ratio": (0.5, 6.0),
 }
 
 METRIC_UNITS: dict[str, str] = {

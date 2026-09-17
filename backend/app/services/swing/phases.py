@@ -71,6 +71,13 @@ def detect_swing_window(video_path: str) -> tuple[int, int, float]:
     s = max(0, s - 1)
     e = min(len(indices) - 1, e + 1)
 
+    # 이 함수는 대개 영상 거의 전체를 돌려준다. 좁히려고 시도해 봤지만
+    # 더 나빠졌다 — 여기서 쓰는 회색조 차분 모션의 피크는 임팩트가 아니라
+    # 골퍼가 공을 줍거나 자리를 뜨는 순간일 때가 많다. 영상 11개로 재면
+    # 피크 기준 고정 길이 창은 성공률을 6/11에서 2/11로 떨어뜨렸다.
+    #
+    # 범위를 넓게 주고 detect_phases 가 좁히도록 두는 편이 낫다. 그쪽은
+    # 회색조가 아니라 실제 손목 랜드마크를 보므로 훨씬 정확하다.
     print(f"[Swing] 피크={peak_val:.2f} | {indices[s]/fps:.1f}s~{indices[e]/fps:.1f}s")
     return indices[s], indices[e], fps
 
