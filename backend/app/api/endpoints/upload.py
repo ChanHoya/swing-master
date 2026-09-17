@@ -79,7 +79,7 @@ async def upload_video(
     await db.commit()
     await db.refresh(db_upload)
 
-    from app.services.pose_estimator import process_pose_estimation
+    from app.services.swing.pipeline import process_pose_estimation
     background_tasks.add_task(process_pose_estimation, db_upload.id)
 
     return {
