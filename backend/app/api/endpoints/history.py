@@ -2,31 +2,15 @@
 History endpoint — GET /history
 사용자별 분석 이력 + 통계 반환
 """
-from fastapi import APIRouter, Depends, HTTPException, Header
-from jose import jwt, JWTError
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_user_id
 from app.core.database import get_db
-from app.core.config import settings
-from app.models import Analysis, Upload, User
+from app.models import Analysis
 
 router = APIRouter()
-
-JWT_SECRET = settings.SECRET_KEY
-JWT_ALGO = "HS256"
-
-
-async def get_current_user_id(authorization: str = Header(None)) -> str:
-    """Authorization: Bearer <token> 헤더에서 user_id 추출"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
-    token = authorization.split(" ", 1)[1]
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-        return payload["sub"]
-    except JWTError:
-        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
 
 
 @router.get("/history")
