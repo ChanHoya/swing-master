@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
@@ -45,15 +45,22 @@ export default function UploadPage() {
     enabled: !!uploadId,
     refetchInterval: (query) => {
       const state = query.state.data?.status;
-      if (state === "done" || state === "failed") {
-        if (state === "done") {
-          router.push(`/analysis/${uploadId}`);
-        }
-        return false;
-      }
-      return 2000;
+      return state === "done" || state === "failed" ? false : 2000;
     },
   });
+
+  // 분석이 끝나면 결과 화면으로 넘어간다.
+  //
+  // 예전에는 refetchInterval 안에서 router.push 를 불렀는데, 그 함수는
+  // 다음 폴링 간격을 정하는 순수 계산이고 React 가 렌더 도중 호출할 수 있다.
+  // 거기서 화면 전환을 일으키면 무시될 수 있고, 한 번 false 를 돌려준 뒤로는
+  // 다시 호출되지 않아 재시도 기회조차 없다. 그래서 "분석 완료! 결과를
+  // 불러옵니다."에서 영영 멈췄다.
+  useEffect(() => {
+    if (uploadId && statusData?.status === "done") {
+      router.push(`/analysis/${uploadId}`);
+    }
+  }, [uploadId, statusData?.status, router]);
 
   const validateFile = (file: File): string | null => {
     if (

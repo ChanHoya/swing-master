@@ -46,3 +46,6 @@ alembic/versions/__pycache__/
 
 # Disabled nested repo (create-next-app 잔재)
 .git.disabled/
+
+# MCP tool state
+.serena/
