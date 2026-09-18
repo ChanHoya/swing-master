@@ -49,3 +49,6 @@ alembic/versions/__pycache__/
 
 # MCP tool state
 .serena/
+
+# 검증용 임시 venv 등
+*venv*/
