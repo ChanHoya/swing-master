@@ -214,3 +214,58 @@ CREATE TABLE analyses (
 CREATE INDEX idx_analyses_user_id ON analyses(user_id);
 CREATE INDEX idx_analyses_status ON analyses(status);
 ```
+
+---
+
+## 지표 페이로드 (2026-09-18 개정)
+
+`Analysis.metrics` 는 지표별 중첩 객체를 담는다. 예전에는 평평한 숫자 맵이었다.
+
+```json
+{
+  "spine_angle":       { "value": 30.59, "confidence": 0.999, "unit": "°",  "measurable": true  },
+  "knee_flex":         { "value": 26.37, "confidence": 0.364, "unit": "°",  "measurable": true  },
+  "shoulder_rotation": { "value": 96.18, "confidence": 0.997, "unit": "°",  "measurable": true  },
+  "hip_rotation":      { "value": 54.54, "confidence": 1.0,   "unit": "°",  "measurable": true  },
+  "x_factor":          { "value": 41.64, "confidence": 0.997, "unit": "°",  "measurable": true  },
+  "tempo_ratio":       { "value": 2.2,   "confidence": 1.0,   "unit": ":1", "measurable": true  },
+  "head_movement":     { "value": null,  "confidence": 0.0,   "unit": "cm", "measurable": false },
+  "weight_shift":      { "value": null,  "confidence": 0.0,   "unit": "%",  "measurable": false },
+  "_meta": {
+    "camera_angle": "down_the_line",
+    "swing_start_sec": 0.33,
+    "swing_end_sec": 8.67,
+    "measured_count": 6,
+    "total_count": 8
+  }
+}
+```
+
+### `value` 가 `null` 인 두 경우를 구분한다
+
+| 상태 | 의미 | 화면 표시 |
+|---|---|---|
+| `measurable: false` | 이 촬영 각도에서는 애초에 측정 불가 | "이 각도에서는 측정 불가" |
+| `measurable: true`, `value: null` | 각도는 맞았으나 랜드마크 부족·범위 초과로 실패 | "측정 실패" |
+
+**어떤 경로로도 기본값을 채우지 않는다.** 예전 코드는 `metrics.get("hip_rotation", 32.0)`
+같은 패턴으로 미계산 지표에 상수를 넣어 모든 사용자에게 같은 가짜 숫자를 보여줬다.
+
+`confidence` 는 해당 지표가 쓰는 랜드마크들의 `visibility` 최솟값이다.
+0.5 미만이면 화면에 "인식 불안정"을 덧붙인다.
+
+### 각도별 계산 가능 지표
+
+| 지표 | `down_the_line` | `face_on` |
+|---|---|---|
+| `spine_angle`, `knee_flex`, `tempo_ratio` | ✓ | ✓ |
+| `shoulder_rotation`, `hip_rotation`, `x_factor` | ✓ | ✗ |
+| `head_movement`, `weight_shift` | ✗ | ✓ |
+
+회전 지표는 깊이(z) 성분이 필요해 MediaPipe `pose_world_landmarks`(3D)를 쓴다.
+픽셀 지표 2종은 world 좌표가 힙 중심 원점이라 계산이 불가능해 2D 픽셀을 쓴다.
+
+### `Analysis.overall_score` / `grade` 는 nullable 이다
+
+측정된 지표가 하나도 없으면 규칙 엔진이 `null` 을 반환하고 그대로 저장한다.
+예전처럼 75점 · C등급을 지어내지 않는다.

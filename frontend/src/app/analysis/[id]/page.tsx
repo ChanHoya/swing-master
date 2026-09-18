@@ -4,6 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
 import Link from "next/link";
+import {
+  METRIC_META,
+  METRIC_ORDER,
+  formatMetric,
+  hasValue,
+  isLowConfidence,
+  metricFillRatio,
+  readMeta,
+  readMetric,
+} from "@/lib/metrics";
 
 // ─── Types ────────────────────────────────────────────────────
 interface Issue {
@@ -30,10 +40,9 @@ interface AnalysisResult {
   status: string;
   overall_score?: number;
   grade?: string;
-  metrics?: Record<string, number> & {
-    swing_start_sec?: number;
-    swing_end_sec?: number;
-  };
+  // 지표 8개는 {value, confidence, unit, measurable} 객체다.
+  // "_meta" 키에 촬영 각도·스윙 구간 같은 부가 정보가 함께 온다.
+  metrics?: Record<string, unknown>;
   feedback?: Feedback;
   overlay_urls?: Record<string, string>;
   completed_at?: string;
@@ -75,12 +84,16 @@ function ScoreRing({ score, grade }: { score: number; grade: string }) {
 }
 
 // ─── SVG Radar Chart ─────────────────────────────────────────
-function RadarChart({ metrics }: { metrics: Record<string, number> }) {
-  const axes = [
-    { key: "spine_angle", label: "척추 각도", ideal: 37, range: 45 },
-    { key: "tempo_ratio", label: "템포 비율", ideal: 3, range: 6 },
-    { key: "head_movement", label: "헤드 안정성", ideal: 2, range: 10 },
-  ];
+function RadarChart({ metrics }: { metrics: Record<string, unknown> }) {
+  // 측정된 지표만 축으로 세운다. 측정 못 한 것을 0으로 채우면
+  // "완전히 잘못된 스윙"처럼 보인다 — 이 프로젝트가 없애려던 종류의 거짓말이다.
+  const axes = METRIC_ORDER.flatMap((key) => {
+    const entry = readMetric(metrics, key);
+    if (!hasValue(entry)) return [];
+    return [{ key, value: entry.value as number, label: METRIC_META[key].label }];
+  });
+
+  if (axes.length < 3) return null; // 축이 3개 미만이면 도형이 안 된다
 
   const size = 240;
   const cx = size / 2;
@@ -95,9 +108,7 @@ function RadarChart({ metrics }: { metrics: Record<string, number> }) {
 
   const axisData = axes.map((a, i) => {
     const angle = (360 / n) * i;
-    const val = metrics[a.key] ?? 0;
-    const diff = Math.abs(val - a.ideal) / a.range;
-    const pct = Math.max(0.08, 1 - diff);
+    const pct = metricFillRatio(a.key, a.value);
     return { ...a, angle, tip: polarXY(angle, r), dot: polarXY(angle, r * pct), pct };
   });
 
@@ -122,12 +133,11 @@ function RadarChart({ metrics }: { metrics: Record<string, number> }) {
       ))}
       {axisData.map((a) => {
         const lp = polarXY(a.angle, r + 26);
-        const val = metrics[a.key];
         return (
           <g key={a.key}>
             <text x={lp.x} y={lp.y - 7} textAnchor="middle" fontSize="10" fill="var(--text-3)">{a.label}</text>
             <text x={lp.x} y={lp.y + 7} textAnchor="middle" fontSize="11" fill="var(--text)" fontWeight="700">
-              {val !== undefined ? Number(val).toFixed(1) : "—"}
+              {a.value.toFixed(1)}
             </text>
           </g>
         );
@@ -190,11 +200,10 @@ export default function AnalysisResultPage() {
   const overlays = result.overlay_urls ?? {};
   const hasAiFeedback = issues.length > 0 || drills.length > 0;
 
-  const metricConfig: Record<string, { label: string; unit: string }> = {
-    spine_angle: { label: "척추 각도", unit: "°" },
-    head_movement: { label: "헤드 무브먼트", unit: "cm" },
-    tempo_ratio: { label: "템포 비율", unit: ":1" },
-  };
+  const meta = readMeta(metrics);
+  const measuredCount = METRIC_ORDER.filter((k) =>
+    hasValue(readMetric(metrics, k)),
+  ).length;
 
   return (
     <div className="animate-fadein" style={{ maxWidth: 960 }}>
@@ -250,20 +259,36 @@ export default function AnalysisResultPage() {
 
         <div className="card" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: 24 }}>
           <div className="card-sub">스윙 지표 레이더</div>
-          {Object.keys(metrics).length > 0 ? (
+          {measuredCount > 0 ? (
             <>
               <RadarChart metrics={metrics} />
+              <p className="text-muted text-xs">
+                8개 중 {measuredCount}개 측정됨
+              </p>
               <div className="metrics-grid w-full">
-                {Object.entries(metrics).map(([key, val]) => {
-                  const cfg = metricConfig[key];
-                  if (!cfg) return null;
+                {METRIC_ORDER.map((key) => {
+                  const meta = METRIC_META[key];
+                  const entry = readMetric(metrics, key);
+                  const measured = hasValue(entry);
                   return (
                     <div key={key} className="metric">
-                      <div className="metric-name">{cfg.label}</div>
-                      <div className="metric-val">
-                        {Number(val).toFixed(1)}
-                        <span className="text-muted text-xs" style={{ marginLeft: 2, fontFamily: "inherit", fontStyle: "normal", fontWeight: 400 }}>{cfg.unit}</span>
+                      <div className="metric-name">
+                        {meta.label}
+                        {meta.note && (
+                          <span className="text-muted text-xs" style={{ marginLeft: 4 }}>
+                            ({meta.note})
+                          </span>
+                        )}
                       </div>
+                      <div
+                        className="metric-val"
+                        style={measured ? undefined : { fontSize: 13, color: "var(--text-3)" }}
+                      >
+                        {formatMetric(entry)}
+                      </div>
+                      {isLowConfidence(entry) && (
+                        <div className="text-muted text-xs">인식 불안정</div>
+                      )}
                     </div>
                   );
                 })}
@@ -271,20 +296,19 @@ export default function AnalysisResultPage() {
             </>
           ) : (
             <p className="text-muted" style={{ padding: "48px 0" }}>
-              지표 데이터 없음
+              지표를 측정하지 못했습니다. 전신이 화면에 들어오도록
+              조금 더 멀리서 다시 촬영해 주세요.
             </p>
           )}
         </div>
       </div>
 
       {/* ── Swing Video Replay ── */}
-      {overlays["original_video"] && metrics?.swing_start_sec !== undefined && (() => {
-        const personTop = metrics.person_y_min ?? 0.30;
-        const cropTop = Math.max(0, personTop - 0.06);
-        const showFrac = 1 - cropTop;
-        const padPct = (9 / 16) * showFrac * 100;
-        const videoH = (1 / showFrac) * 100;
-        const videoTop = -(cropTop / showFrac) * 100;
+      {overlays["original_video"] && meta.swing_start_sec !== undefined && (() => {
+        // 예전에는 person_y_min 으로 상단 배경을 잘라냈으나 그 지표는 제거됐다.
+        // 영상을 그대로 보여주고 재생 구간만 스윙에 맞춘다.
+        const padPct = (9 / 16) * 100;
+        const startSec = meta.swing_start_sec ?? 0;
 
         return (
           <div className="mt-6">
@@ -296,16 +320,15 @@ export default function AnalysisResultPage() {
                 <video
                   key={overlays["original_video"]}
                   controls loop playsInline preload="metadata"
-                  style={{ position: "absolute", width: "100%", height: `${videoH}%`, top: `${videoTop}%`, left: 0 }}
+                  style={{ position: "absolute", width: "100%", height: "100%", top: 0, left: 0, objectFit: "contain" }}
                   onLoadedMetadata={(e) => {
-                    const v = e.currentTarget;
-                    v.currentTime = metrics.swing_start_sec ?? 0;
+                    e.currentTarget.currentTime = startSec;
                   }}
                   onTimeUpdate={(e) => {
                     const v = e.currentTarget;
-                    const end = metrics.swing_end_sec ?? v.duration;
+                    const end = meta.swing_end_sec ?? v.duration;
                     if (v.currentTime >= end) {
-                      v.currentTime = metrics.swing_start_sec ?? 0;
+                      v.currentTime = startSec;
                       v.play().catch(() => {});
                     }
                   }}
@@ -315,8 +338,7 @@ export default function AnalysisResultPage() {
               </div>
               <div className="viewer-controls" style={{ justifyContent: "space-between" }}>
                 <span className="mono text-xs text-muted">
-                  스윙 구간: {metrics.swing_start_sec?.toFixed(1)}s ~ {metrics.swing_end_sec?.toFixed(1)}s
-                  {cropTop > 0.02 && <span style={{ marginLeft: 8, color: "var(--text-4)" }}>· 상단 {Math.round(cropTop * 100)}% 배경 제거</span>}
+                  스윙 구간: {startSec.toFixed(1)}s ~ {meta.swing_end_sec?.toFixed(1)}s
                 </span>
                 <a href={overlays["original_video"]} download target="_blank" className="btn sm">
                   ↓ 원본 다운로드

@@ -29,8 +29,10 @@
 
 | 기술 | 버전/모델 | 선정 근거 |
 |------|-----------|-----------|
-| OpenAI API | GPT-4o | 최고 수준의 한국어 피드백 품질 |
-| MediaPipe Pose | BlazePose (Full) | 33 keypoints, GPU 불필요 |
+| 규칙 엔진 | `feedback/rules.py` | 진단·점수·드릴을 확정한다. LLM 없이 완결되므로 API 장애에 영향받지 않는다 |
+| Gemini API | gemini-2.5-flash (fallback 3종) | 규칙 엔진 결과의 **문장만** 다듬는다. 실패하면 규칙 결과가 그대로 나간다 |
+| MediaPipe Pose | BlazePose lite | 33 keypoints + `pose_world_landmarks`(미터 단위 3D). 회전 지표는 이 3D 없이 계산 불가 |
+| supervision | 0.30.3 (MIT) | 키포인트 표준화와 스켈레톤 오버레이. 뼈대 정의를 데이터로 분리 |
 
 ### 인프라
 
@@ -55,7 +57,7 @@
 
 | 대안 | 제외 이유 |
 |------|-----------|
-| YOLOv8 Pose | 모델 용량 크고, MediaPipe 대비 추가 이점 없음 |
+| YOLO-Pose | **3D를 주지 않는다.** COCO 17점을 이미지 평면 2D로만 회귀하므로 어깨·힙 회전을 계산할 수 없다. 사람 탐지·ROI 크롭 용도로는 유효하나 torch(macOS arm64 휠 121MB)를 끌어와 Railway 배포를 압박한다 |
 | LangChain | MVP 규모에서 over-engineering |
 | AWS Lambda | Cold start 지연 → 분석 UX 저하 |
 | Firebase | Supabase 대비 쿼리 유연성 부족 |
