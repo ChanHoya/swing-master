@@ -12,6 +12,7 @@ export default function AuthModal({ onClose }: Props) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +24,7 @@ export default function AuthModal({ onClose }: Props) {
       if (mode === "login") {
         await login(email, password);
       } else {
-        await register(email, password);
+        await register(email, password, inviteCode);
       }
       onClose();
     } catch (err: any) {
@@ -162,6 +163,33 @@ export default function AuthModal({ onClose }: Props) {
               onBlur={(e) => (e.target.style.borderColor = "var(--line)")}
             />
           </div>
+
+          {/* 가입에는 초대 코드가 필요하다. 백엔드가 INVITE_CODE 와 대조한다. */}
+          {mode === "register" && (
+            <div>
+              <label style={{ display: "block", fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>초대 코드</label>
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                required
+                placeholder="초대받은 코드를 입력하세요"
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  color: "var(--text)",
+                  outline: "none",
+                  background: "var(--bg-3)",
+                  border: "1px solid var(--line)",
+                  transition: "border-color 0.15s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
+                onBlur={(e) => (e.target.style.borderColor = "var(--line)")}
+              />
+            </div>
+          )}
 
           {error && (
             <div className="msg bad" style={{ fontSize: 12 }}>

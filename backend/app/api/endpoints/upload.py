@@ -6,7 +6,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_optional_user_id
+from app.core.auth import get_current_user_id
 from app.core.database import get_db
 from app.core.storage import upload_fileobj
 from app.models import Upload, Analysis
@@ -22,7 +22,7 @@ async def upload_video(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    user_id: str | None = Depends(get_optional_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> dict:
     """
     영상 파일 업로드 엔드포인트.
@@ -70,9 +70,9 @@ async def upload_video(
             detail=f"스토리지 업로드 중 오류가 발생했습니다: {str(e)}"
         )
 
-    # 로그인했다면 그 사용자에게 귀속시킨다. 비로그인이면 None 으로 남는다.
-    # 이게 없으면 GET /history 가 user_id 로 필터하므로 로그인해도 빈 배열이 나온다.
-    owner = uuid.UUID(user_id) if user_id else None
+    # 업로드는 로그인한 사용자에게만 허용한다. 공개 URL 에서 익명 업로드를
+    # 열어 두면 R2 용량과 Gemini 할당량이 모르는 사람에게 나간다.
+    owner = uuid.UUID(user_id)
 
     # 1. Upload 레코드 추가
     db_upload = Upload(storage_url=storage_url, file_size=file_size, user_id=owner)

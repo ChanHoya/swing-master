@@ -4,9 +4,9 @@
 
 **Goal:** 맥북 로컬에서만 돌던 Swing Master 를 폰에서 쓸 수 있게, 백엔드를 Render(무료)에 프론트를 Vercel 에 올린다.
 
-**Architecture:** DB(Supabase)와 스토리지(R2)는 이미 클라우드에 있어 그대로 쓴다. 백엔드는 기존 `backend/Dockerfile` 로 Render 웹 서비스 하나에 올리고, 분석은 지금처럼 `BackgroundTasks` 로 같은 프로세스에서 돈다(무료 티어에 Worker 가 없다). 공개 URL 이 되므로 업로드에 로그인을 요구하고 가입을 초대 코드로 잠근다.
+**Architecture:** 스토리지(R2)는 이미 클라우드에 있어 그대로 쓴다. DB 는 Neon(무료)을 새로 만든다 — 기존 Supabase 프로젝트는 소멸했다. 백엔드는 기존 `backend/Dockerfile` 로 Render 웹 서비스 하나에 올리고, 분석은 지금처럼 `BackgroundTasks` 로 같은 프로세스에서 돈다(무료 티어에 Worker 가 없다). 공개 URL 이 되므로 업로드에 로그인을 요구하고 가입을 초대 코드로 잠근다.
 
-**Tech Stack:** FastAPI 0.136 / Python 3.13(Docker) / Next.js 16 / Render(Docker, free) / Vercel / Supabase / Cloudflare R2 / GitHub Actions
+**Tech Stack:** FastAPI 0.136 / Python 3.12(Docker) / Next.js 16 / Render(Docker, free) / Vercel / Neon Postgres / Cloudflare R2
 
 **Spec:** `docs/superpowers/specs/2026-09-19-render-vercel-deployment-design.md`
 
@@ -25,134 +25,14 @@
 
 ---
 
-## Task 1: Phase 0 — 무료 티어를 로컬에서 재현해 실측
+## Task 1: Phase 0 — 무료 티어를 로컬에서 재현해 실측 ✅ 완료
 
-이 태스크만 TDD 가 아니다. **코드를 바꾸지 않고 사실을 알아내는 것**이 산출물이다.
-여기 결과가 "불가" 면 **뒤 태스크로 넘어가지 말고 사용자에게 요금제를 묻는다.**
+커밋 `063a14e`. 결과는 `docs/superpowers/plans/2026-09-19-phase0-measurement.md`.
 
-**Files:**
-- Create: `docs/superpowers/plans/2026-09-19-phase0-measurement.md` (측정 기록)
-
-**Interfaces:**
-- Consumes: 없음
-- Produces: 측정 기록 문서. 뒤 태스크는 이 문서의 판정(가능/불가)에만 의존한다.
-
-**사전 조건:** Docker Desktop 이 떠 있어야 한다. `docker info --format '{{.ServerVersion}}'` 이 버전을 출력하면 준비된 것이다.
-
-- [ ] **Step 1: 이미지를 빌드한다**
-
-```bash
-cd /Users/chanhojung/swing-master
-docker build -t swing-api -f backend/Dockerfile . 2>&1 | tail -30
-```
-
-컨텍스트는 **저장소 루트**(마지막 인자 `.`)다. `backend/` 가 아니다 — 커밋 `03e8504` 가 고친 전제이고, 틀리면 `requirements.txt: not found` 로 깨진다.
-
-- [ ] **Step 2: cv2 가 어느 패키지에서 왔는지 확인한다**
-
-설계 문서가 지목한 미검증 위험이다. mediapipe 0.10.33 이 `opencv-contrib-python` 을 의존성으로 선언하므로, `requirements.txt` 에서 지웠어도 되살아나 `cv2` 를 덮어쓸 수 있다.
-
-```bash
-docker run --rm swing-api sh -c "pip list 2>/dev/null | grep -i opencv; python -c 'import cv2; print(cv2.__version__, cv2.__file__)'"
-```
-
-기록할 것: 설치된 opencv 패키지 **목록 전체**와 `cv2` 버전. `opencv-contrib-python` 과 `opencv-python-headless` 가 **둘 다** 나오면 중복이 되살아난 것이다.
-
-- [ ] **Step 3: 512MB / 0.1 CPU 제한으로 컨테이너를 띄운다**
-
-```bash
-docker run -d --name swing-probe \
-  --memory=512m --cpus=0.1 \
-  --env-file backend/.env \
-  -e ENV=production \
-  -p 8000:8000 swing-api
-sleep 20 && curl -s localhost:8000/health
-```
-
-`--memory=512m` 은 실제 cgroup 제한이라 넘치면 컨테이너가 진짜로 OOM kill 된다.
-`/health` 가 `{"status":"ok",...}` 를 돌려주면 DB 연결까지 산 것이다.
-
-`ENV=production` 으로 덮어쓰는 이유는 운영과 같은 조건에서 재기 위해서다.
-`development` 면 SQLAlchemy 가 모든 SQL 을 찍어(`echo=True`) 로그와 메모리에
-노이즈가 섞인다. 테이블은 Supabase 에 이미 있으므로 `create_all` 을 건너뛰어도
-문제없다.
-
-**함정 하나.** `docker --env-file` 은 값의 따옴표를 벗기지 않고 문자 그대로
-넘긴다. `backend/.env` 의 `GEMINI_API_KEY="AQ.Ab8..."` 는 따옴표까지 포함된
-키로 전달돼 Gemini 호출이 실패한다. 하지만 `polish()` 는 실패하면 규칙 엔진
-결과를 그대로 돌려주므로 **분석은 끝까지 완주하고 측정은 유효하다.** 로그에
-`LLM 윤문 실패` 가 보여도 버그가 아니니 그렇게 읽지 말 것.
-
-- [ ] **Step 4: 메모리를 관찰하면서 실제 영상을 분석시킨다**
-
-터미널 두 개가 필요하다. 하나는 관찰:
-
-```bash
-while true; do docker stats --no-stream --format '{{.MemUsage}} {{.CPUPerc}}' swing-probe; sleep 2; done | tee /tmp/swing-mem.txt
-```
-
-다른 하나는 업로드(이 시점에는 아직 익명 업로드가 열려 있다 — Task 2 에서 닫는다):
-
-```bash
-curl -s -X POST localhost:8000/upload \
-  -F "file=@/Users/chanhojung/Downloads/골프스윙호야1.mp4;type=video/mp4"
-```
-
-돌려받은 `upload_id` 로 상태를 폴링한다:
-
-```bash
-curl -s "localhost:8000/analysis/<upload_id>/status"
-```
-
-- [ ] **Step 5: 결과를 판정한다**
-
-```bash
-docker logs swing-probe 2>&1 | grep -E "\[Vision\]|Killed|MemoryError"
-docker inspect swing-probe --format '{{.State.OOMKilled}} {{.State.ExitCode}}'
-```
-
-| 관찰 | 판정 |
-|---|---|
-| `[Vision] 완료 \| 총 N초` 가 찍히고 `OOMKilled=false` | **가능.** N 초를 기록하고 Task 2 로 |
-| `OOMKilled=true` 또는 로그가 중간에 끊김 | **불가.** 여기서 멈추고 사용자에게 요금제를 묻는다 |
-| 최대 메모리가 480MB 이상 | **위태로움.** 가능으로 보되 기록에 경고를 남긴다 |
-
-- [ ] **Step 6: 측정 기록을 쓴다**
-
-`docs/superpowers/plans/2026-09-19-phase0-measurement.md` 에 아래를 채운다. **못 잰 항목은 추정치를 적지 말고 "못 쟀음"과 그 이유를 적는다.**
-
-```markdown
-# Phase 0 측정 기록 (2026-09-19)
-
-| 항목 | 값 |
-|---|---|
-| 빌드 성공 | |
-| 이미지 크기 | (`docker images swing-api --format '{{.Size}}'`) |
-| 설치된 opencv 패키지 | |
-| cv2 버전/경로 | |
-| 분석 소요 시간 (512m/0.1cpu) | |
-| 최대 메모리 | |
-| OOMKilled | |
-| 판정 | 가능 / 위태로움 / 불가 |
-```
-
-**참고 — 경량화에 대한 정직한 정정.** 설계 문서는 쓰이지 않는 `openai`·`google-genai` 제거를 "경량화 첫 카드"로 적었다. 이 둘은 **어디에서도 import 되지 않으므로 런타임 메모리(RSS)를 차지하지 않는다.** 제거는 이미지 크기와 빌드 시간을 줄일 뿐 OOM 을 해결하지 못한다. 메모리가 문제라면 실제 레버는 프레임 수(`skip`)와 처리 해상도(`proc_width`)다. 판정이 "불가" 로 나왔을 때 이 구분을 사용자에게 정확히 전달한다.
-
-- [ ] **Step 7: 커밋**
-
-```bash
-docker rm -f swing-probe
-git add docs/superpowers/plans/2026-09-19-phase0-measurement.md
-git commit -m "$(cat <<'EOF'
-docs: record Phase 0 free-tier measurement
-
-512MB/0.1CPU 컨테이너에서 실제 스윙 영상으로 분석을 돌려
-메모리·소요 시간·opencv 중복 여부를 실측했다.
-
-Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
+- 분석 완주, 최대 메모리 355MB/512MB(69%), OOM 없음 → **메모리 통과**
+- 소요 470초(에뮬레이션). 실제 값은 Render 배포 후 측정 → 요금제는 그때 결정
+- 이미지가 리눅스에서 돌도록 `Dockerfile` 4건 수정
+- **설계 전제 2개가 무너져 개정됨** — 설계 문서의 "개정" 절 참고
 
 ---
 
@@ -385,7 +265,7 @@ EOF
 
 ---
 
-## Task 3: CORS 를 실제로 동작하게 고친다
+## Task 3: 배포용 백엔드 설정 수정 (CORS + DB 커넥션 풀)
 
 현재 기본값의 `"https://*.vercel.app"` 는 **아무것도 매칭하지 않는다.** Starlette 1.0.0 의
 `CORSMiddleware.is_allowed_origin` 은 마지막 줄이 `return origin in self.allow_origins`
@@ -394,6 +274,7 @@ EOF
 **Files:**
 - Modify: `backend/app/core/config.py` (CORS_ORIGINS 기본값 수정, CORS_ORIGIN_REGEX 추가)
 - Modify: `backend/app/main.py:40-46` (allow_origin_regex 연결)
+- Modify: `backend/app/core/database.py` (pool_pre_ping)
 - Create: `backend/tests/test_cors_config.py`
 
 **Interfaces:**
@@ -497,11 +378,41 @@ cd backend && .venv/bin/pytest tests/ -q > /tmp/pt.txt 2>&1; EXIT=$?; tail -5 /t
 ```
 기대: `EXIT=0`, 145 passed.
 
-- [ ] **Step 6: 커밋**
+- [ ] **Step 6: Neon 의 유휴 연결 끊김에 대비한다**
+
+Neon 무료 플랜은 5분 유휴 후 컴퓨트를 정지하고 연결을 끊는다. SQLAlchemy 풀에
+죽은 커넥션이 남아 다음 요청이 실패하므로, 꺼내 쓰기 전에 확인하게 한다.
+
+`backend/app/core/database.py` 의 `create_async_engine` 호출에 한 줄 더한다.
+
+```python
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.ENV == "development",
+    pool_size=10,
+    max_overflow=20,
+    # Neon 은 5분 유휴 후 컴퓨트를 정지하며 연결을 끊는다. 풀에 남은 죽은
+    # 커넥션을 그대로 쓰면 다음 요청이 실패하므로, 꺼낼 때 한 번 확인한다.
+    pool_pre_ping=True,
+    connect_args={
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+    }
+)
+```
+
+- [ ] **Step 7: 전체 테스트로 회귀가 없는지 본다**
+
+```bash
+cd backend && .venv/bin/pytest tests/ -q > /tmp/pt.txt 2>&1; EXIT=$?; tail -5 /tmp/pt.txt; echo "EXIT=$EXIT"
+```
+기대: `EXIT=0`.
+
+- [ ] **Step 8: 커밋**
 
 ```bash
 cd /Users/chanhojung/swing-master
-git add backend/app/core/config.py backend/app/main.py backend/tests/test_cors_config.py
+git add backend/app/core/config.py backend/app/core/database.py backend/app/main.py backend/tests/test_cors_config.py
 git commit -m "$(cat <<'EOF'
 fix(cors): wildcards in allow_origins never matched anything
 
@@ -829,14 +740,50 @@ EOF
 - Consumes: Task 5 의 `render.yaml`, `frontend/vercel.json`
 - Produces: `RENDER_URL`(예: `https://swing-master-api.onrender.com`), `VERCEL_URL`. Task 7·8 이 둘 다 쓴다.
 
-- [ ] **Step 1: 변경사항을 푸시한다**
+- [ ] **Step 1: Neon 프로젝트를 만든다 (사람이 한다)**
+
+기존 Supabase 프로젝트는 소멸했다. https://neon.com 에서 무료 프로젝트를 만들고
+리전은 **싱가포르**를 고른다(Render 도 싱가포르에 둔다).
+
+연결 문자열을 받아 드라이버를 asyncpg 로 바꿔 적어 둔다.
+
+```
+postgresql://...            (Neon 이 주는 형태)
+postgresql+asyncpg://...    (우리가 쓸 형태 — DATABASE_URL 에 이것을 넣는다)
+```
+
+- [ ] **Step 2: 스키마를 만들고 기존 데이터를 옮긴다**
+
+로컬 Postgres 에 사용자 1명·업로드 25건·분석 25건이 있고, 참조하는 R2 객체는
+살아 있다. 옮기면 배포 직후부터 히스토리가 보인다.
+
+```bash
+# 로컬에서 덤프 (스키마 + 데이터)
+pg_dump "postgresql://chanhojung@localhost:5432/swingmaster" \
+  --no-owner --no-privileges -f /tmp/swing-dump.sql
+
+# Neon 으로 복원 (psql 형식이므로 postgresql:// 주소를 쓴다)
+psql "<NEON_POSTGRESQL_URL>" -f /tmp/swing-dump.sql
+```
+
+- [ ] **Step 3: 옮겨졌는지 확인한다**
+
+```bash
+psql "<NEON_POSTGRESQL_URL>" -c "select
+  (select count(*) from users) as users,
+  (select count(*) from uploads) as uploads,
+  (select count(*) from analyses) as analyses"
+```
+기대: `1 | 25 | 25`.
+
+- [ ] **Step 4: 변경사항을 푸시한다**
 
 ```bash
 git push origin main
 ```
 Render 와 Vercel 모두 GitHub 저장소에서 읽어 간다.
 
-- [ ] **Step 2: Render 에 Blueprint 로 올린다**
+- [ ] **Step 5: Render 에 Blueprint 로 올린다**
 
 1. https://dashboard.render.com → **New** → **Blueprint**
 2. `ChanHoya/swing-master` 저장소 연결 → `render.yaml` 자동 인식
@@ -850,7 +797,7 @@ Render 와 Vercel 모두 GitHub 저장소에서 읽어 간다.
 
 빌드는 10~20분 걸릴 수 있다(MediaPipe 와 OpenCV 휠이 크다).
 
-- [ ] **Step 3: 백엔드가 살았는지 확인한다**
+- [ ] **Step 6: 백엔드가 살았는지 확인한다**
 
 ```bash
 curl -s https://<RENDER_URL>/health
@@ -863,14 +810,14 @@ Supabase 에 개발 중 만들어진 테이블이 이미 있어 문제없지만,
 바꾸면 `alembic upgrade head` 를 직접 돌려야 한다.** 배포가 자동으로 해 주지
 않는다.
 
-- [ ] **Step 4: Vercel 에 올린다**
+- [ ] **Step 7: Vercel 에 올린다**
 
 1. https://vercel.com/new → 같은 저장소 import
 2. **Root Directory 를 `frontend` 로 지정한다** (기본값 아님 — 반드시 바꾼다)
-3. 환경변수 `NEXT_PUBLIC_API_URL` = Step 3 의 Render 주소 (끝에 `/` 없이)
+3. 환경변수 `NEXT_PUBLIC_API_URL` = Step 6 의 Render 주소 (끝에 `/` 없이)
 4. Deploy
 
-- [ ] **Step 5: CORS 를 실제 주소로 갱신하고 재배포한다**
+- [ ] **Step 8: CORS 를 실제 주소로 갱신하고 재배포한다**
 
 Render 대시보드에서 `CORS_ORIGINS` 를 고친다.
 
@@ -886,99 +833,19 @@ https://swing-master-[a-z0-9-]+\.vercel\.app
 
 Render 는 환경변수를 바꾸면 자동으로 재시작한다.
 
-- [ ] **Step 6: 계정을 만들고 끝까지 돌려 본다**
+- [ ] **Step 9: 끝까지 돌려 보고 분석 소요 시간을 잰다**
 
-브라우저에서 `https://<VERCEL_URL>` → 회원가입(초대 코드 입력) → 업로드 → 분석 완료 →
-결과 표시까지 **한 번에** 되는지 본다. 실패하면 Render 로그(`[Vision]` 줄)를 본다.
+브라우저에서 `https://<VERCEL_URL>` → 로그인(옮긴 계정) 또는 회원가입(초대 코드) →
+업로드 → 분석 완료 → 결과 표시까지 **한 번에** 되는지 본다.
+실패하면 Render 로그의 `[Vision]` 줄을 본다.
 
----
-
-## Task 7: keep-alive 워크플로
-
-Supabase 무료 프로젝트는 7일 무활동 시 일시정지되고, **복구 경로는 대시보드뿐이다.**
-Render 인스턴스처럼 요청이 오면 저절로 깨어나지 않는다. 폰만 들고 있을 때 이걸 당하면
-손쓸 방법이 없으므로 애초에 멈추지 않게 한다.
-
-**Files:**
-- Create: `.github/workflows/keepalive.yml`
-
-**Interfaces:**
-- Consumes: Task 6 의 `RENDER_URL`
-- Produces: 없음
-
-- [ ] **Step 1: 워크플로를 만든다**
-
-`.github/workflows/keepalive.yml`:
-
-```yaml
-# Supabase 무료 프로젝트는 7일 무활동 시 일시정지되고, 복구는 대시보드에서만
-# 된다(요청이 와도 저절로 깨어나지 않는다). 공식 문서가 "충분한 API 또는
-# 애플리케이션 트래픽"도 일시정지를 막는다고 하므로 주기적으로 찔러 둔다.
-#
-# /health 는 SELECT 1 을 실제로 DB 에 날리므로 그대로 DB 트래픽이 되고,
-# 덤으로 Render 인스턴스도 깨어난다.
-#
-# 한계: GitHub Actions 스케줄 워크플로는 저장소에 60일간 활동이 없으면
-# 자동 비활성화된다. 프로젝트를 오래 방치하면 이 안전장치도 함께 멈춘다.
-name: keep-alive
-
-on:
-  schedule:
-    - cron: "0 3 */3 * *"   # 3일마다 03:00 UTC
-  workflow_dispatch:         # 수동 실행도 가능하게
-
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Ping health endpoint
-        run: |
-          # 콜드스타트가 1분 가까이 걸릴 수 있으므로 넉넉히 기다린다.
-          RESPONSE=$(curl -sS --max-time 120 --retry 3 --retry-delay 30 \
-            "${{ secrets.RENDER_HEALTH_URL }}")
-          echo "$RESPONSE"
-          echo "$RESPONSE" | grep -q '"db":"ok"' || {
-            echo "DB 가 응답하지 않는다. Supabase 가 일시정지됐을 수 있다."
-            exit 1
-          }
-```
-
-URL 을 저장소에 박지 않고 `secrets.RENDER_HEALTH_URL` 로 받는다. 공개 저장소라
-주소를 굳이 눈에 띄게 둘 이유가 없다.
-
-- [ ] **Step 2: 시크릿을 등록한다 (사람이 한다)**
-
-GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
-- Name: `RENDER_HEALTH_URL`
-- Value: `https://<RENDER_URL>/health`
-
-- [ ] **Step 3: 수동으로 한 번 돌려 확인한다**
-
-GitHub → Actions → keep-alive → **Run workflow**.
-기대: 초록색, 로그에 `{"status":"ok","db":"ok",...}`.
-
-- [ ] **Step 4: 커밋**
-
-```bash
-git add .github/workflows/keepalive.yml
-git commit -m "$(cat <<'EOF'
-chore(ci): ping /health every three days to keep Supabase awake
-
-Supabase 무료 프로젝트는 7일 무활동 시 일시정지되고 복구는 대시보드에서만
-된다 — Render 인스턴스와 달리 요청이 와도 깨어나지 않는다. 폰만 들고
-있을 때 이걸 당하면 손쓸 방법이 없다.
-
-/health 가 SELECT 1 을 실제로 DB 에 날리므로 그대로 DB 트래픽이 되고
-Render 인스턴스도 함께 깨어난다.
-
-Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
+**그리고 `[Vision] 완료 | 총 N초` 를 기록한다.** 이것이 Phase 0 에서 에뮬레이션
+때문에 얻지 못한 진짜 숫자이며, 무료 티어를 유지할지 Starter($7)로 올릴지를
+사용자가 이 값으로 결정한다.
 
 ---
 
-## Task 8: 모바일 화면 점검과 수정
+## Task 7: 모바일 화면 점검과 수정
 
 **무엇을 고칠지 미리 못 박지 않는다.** 폰에서 무엇이 깨지는지는 띄워 봐야 안다.
 이 태스크는 "점검 → 발견한 것만 고친다" 이고, 발견이 없으면 고치지 않는 것이 정답이다.

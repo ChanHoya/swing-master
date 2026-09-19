@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/auth/AuthModal";
 
 export default function UploadPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -109,6 +113,40 @@ export default function UploadPage() {
     statusMessage = "분석 완료! 결과를 불러옵니다.";
   else if (statusData?.status === "failed")
     statusMessage = "분석에 실패했습니다. 다른 영상으로 시도해보세요.";
+
+  // 업로드는 로그인이 필요하다. 훅을 모두 선언한 뒤에 갈라낸다 —
+  // 조건부 훅 호출은 React 규칙 위반이다.
+  //
+  // 앞에서 막는 이유: 그러지 않으면 폰에서 영상을 고르고 업로드까지 마친
+  // 뒤에야 401 을 맞는다. 모바일에서 특히 나쁜 경험이다.
+  if (!user) {
+    return (
+      <div className="animate-fadein" style={{ maxWidth: 720, padding: 24, textAlign: "center" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+          로그인이 필요합니다
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>
+          스윙 영상을 분석하려면 먼저 로그인해 주세요.
+        </p>
+        <button
+          onClick={() => setShowAuth(true)}
+          style={{
+            padding: "12px 24px",
+            borderRadius: 10,
+            border: "none",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            background: "var(--accent)",
+            color: "#0a0c10",
+          }}
+        >
+          로그인 / 회원가입
+        </button>
+        {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fadein" style={{ maxWidth: 720 }}>

@@ -41,6 +41,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    # 빈 문자열을 그대로 넘기면 모든 오리진에 대해 fullmatch 가 시도된다.
+    # 설정하지 않았다는 뜻이므로 None 으로 바꿔 끈다.
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
