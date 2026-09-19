@@ -1,0 +1,42 @@
+# Render 배포 설정 (Blueprint).
+#
+# nixpacks 류 추론에 맡기지 않고 backend/Dockerfile 을 쓴다. 이 백엔드는
+# OpenCV·MediaPipe 용 시스템 라이브러리(libgl1·libegl1·libgles2·libglib2.0-0·
+# libgomp1)와 한글 폰트(fonts-nanum)가 필요하다.
+services:
+  - type: web
+    runtime: docker
+    name: swing-master-api
+    plan: free
+    region: singapore          # Neon 도 싱가포르에 둔다
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .           # 컨텍스트는 저장소 루트다. backend/ 가 아니다.
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      # 현재 .env 의 값은 문자 그대로 CHANGE_ME_IN_PRODUCTION 이라 쓸 수 없다.
+      # Render 가 256비트 값을 생성하게 한다.
+      - key: SECRET_KEY
+        generateValue: true
+      # 아래는 모두 대시보드에서 입력한다. 저장소에 들어가지 않는다.
+      - key: DATABASE_URL          # Neon. postgresql+asyncpg:// 형태로 넣을 것
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: INVITE_CODE           # 비우면 회원가입이 닫힌다
+        sync: false
+      - key: CORS_ORIGINS          # JSON 배열. 예: ["https://xxx.vercel.app"]
+        sync: false
+      - key: CORS_ORIGIN_REGEX     # 프리뷰용. 안 쓰면 비워 둔다
+        sync: false
