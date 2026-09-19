@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
@@ -17,6 +17,7 @@ import {
   readMeta,
   readMetric,
 } from "@/lib/metrics";
+import type { TrackPoint } from "@/lib/metrics";
 
 /** 재생 속도 선택지. 임팩트는 0.25배속 아래로 내려야 눈에 들어온다. */
 const SPEEDS = [1, 0.75, 0.5, 0.25, 0.1] as const;
@@ -42,6 +43,104 @@ function speedForSpan(spanSec: number): number {
     if (spanSec / s >= TARGET_PLAY_SEC) return s;
   }
   return usable[usable.length - 1]; // 가장 느린 값
+}
+
+/** 어드레스 직전·피니시 직후에 남겨 둘 여유(초). */
+const CROP_PAD_SEC = 0.4;
+
+/** 궤적 색. 백스윙과 다운스윙을 나눠야 두 선이 겹치는지 보인다. */
+const BACKSWING_RGB = "94,190,255";
+const DOWNSWING_RGB = "212,255,58";
+
+/**
+ * 영상이 실제로 그려지는 사각형을 구한다.
+ *
+ * <video> 는 objectFit:contain 이라 세로 영상이면 좌우에, 가로 영상이면
+ * 위아래에 검은 여백이 생긴다. 궤적을 캔버스 전체에 펴 그리면 그 여백만큼
+ * 어긋나므로 영상이 놓인 영역을 따로 계산해야 한다.
+ */
+function containRect(boxW: number, boxH: number, vidW: number, vidH: number) {
+  const scale = Math.min(boxW / vidW, boxH / vidH);
+  const w = vidW * scale;
+  const h = vidH * scale;
+  return { x: (boxW - w) / 2, y: (boxH - h) / 2, w, h };
+}
+
+/**
+ * 손 궤적을 캔버스에 그린다.
+ *
+ * 전체 경로를 흐리게 깔고 현재 재생 시점까지를 진하게 덧그린다. 탑을 기준으로
+ * 색을 나눠서 백스윙 선과 다운스윙 선이 갈라지는지 — 아웃-인인지 인-아웃인지 —
+ * 눈으로 보이게 한다. 추적 대상은 양 손목의 중점이고 클럽헤드가 아니다.
+ */
+function drawHandPath(
+  canvas: HTMLCanvasElement,
+  video: HTMLVideoElement,
+  points: TrackPoint[],
+  topSec: number | undefined,
+): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx || !video.videoWidth || !video.videoHeight) return;
+
+  // 캔버스 버퍼를 화면 배율에 맞춘다. 안 맞추면 선이 흐려진다.
+  const dpr = window.devicePixelRatio || 1;
+  const boxW = canvas.clientWidth;
+  const boxH = canvas.clientHeight;
+  if (boxW === 0 || boxH === 0) return;
+  const bufW = Math.round(boxW * dpr);
+  const bufH = Math.round(boxH * dpr);
+  if (canvas.width !== bufW || canvas.height !== bufH) {
+    canvas.width = bufW;
+    canvas.height = bufH;
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, boxW, boxH);
+
+  const rect = containRect(boxW, boxH, video.videoWidth, video.videoHeight);
+  const toScreen = (p: TrackPoint): [number, number] => [
+    rect.x + p[1] * rect.w,
+    rect.y + p[2] * rect.h,
+  ];
+
+  const split = topSec ?? points[points.length - 1][0];
+  const now = video.currentTime;
+
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // 두 번 훑는다. 먼저 전체 경로를 흐리게, 그 다음 지나온 만큼을 진하게.
+  for (const pass of [0, 1] as const) {
+    ctx.lineWidth = pass === 0 ? 2 : 3.5;
+    const alpha = pass === 0 ? "0.22)" : "0.95)";
+    for (let i = 1; i < points.length; i++) {
+      const cur = points[i];
+      if (pass === 1 && cur[0] > now) break;
+      ctx.strokeStyle = `rgba(${cur[0] <= split ? BACKSWING_RGB : DOWNSWING_RGB},${alpha}`;
+      const [x0, y0] = toScreen(points[i - 1]);
+      const [x1, y1] = toScreen(cur);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+  }
+
+  // 현재 위치. 재생 중 손이 어디를 지나는지 따라갈 수 있게 한다.
+  let head: TrackPoint | undefined;
+  for (const p of points) {
+    if (p[0] > now) break;
+    head = p;
+  }
+  if (head) {
+    const [hx, hy] = toScreen(head);
+    ctx.beginPath();
+    ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = `rgb(${head[0] <= split ? BACKSWING_RGB : DOWNSWING_RGB})`;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
+    ctx.stroke();
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────
@@ -194,6 +293,9 @@ export default function AnalysisResultPage() {
   const [speed, setSpeed] = useState<number>(1);
   const [loopRange, setLoopRange] = useState<{ start: number; end: number } | null>(null);
   const [activePhase, setActivePhase] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [showTrack, setShowTrack] = useState(false);
+  const [fullVideo, setFullVideo] = useState(false);
 
   const { data: result, isLoading, isError } = useQuery<AnalysisResult>({
     queryKey: ["analysisResult", id],
@@ -203,6 +305,45 @@ export default function AnalysisResultPage() {
     },
     enabled: !!id,
   });
+
+  // 훅은 조기 반환보다 앞에 있어야 하므로 result 가 아직 없을 수 있다고 보고
+  // 꺼낸다. readMeta 는 undefined 를 받아도 빈 객체를 돌려준다.
+  const meta = useMemo(() => readMeta(result?.metrics), [result]);
+  const topSec = meta.phase_seconds?.top;
+
+  // 재생·궤적 구간은 어드레스 직전부터 피니시 직후까지다.
+  // swing_start_sec/swing_end_sec 은 영상 거의 전체를 가리켜서 걸어오는
+  // 장면이나 공 줍는 장면까지 들어온다. 단계 시각이 훨씬 정확하다.
+  const swingStart =
+    meta.phase_seconds?.address !== undefined
+      ? Math.max(0, meta.phase_seconds.address - CROP_PAD_SEC)
+      : (meta.swing_start_sec ?? 0);
+  const swingEnd =
+    meta.phase_seconds?.finish !== undefined
+      ? meta.phase_seconds.finish + CROP_PAD_SEC
+      : meta.swing_end_sec;
+
+  // 스윙 밖의 점은 버린다. 전체 영상을 볼 때도 그리는 건 스윙 궤적뿐이다.
+  const trackPoints = useMemo(() => {
+    const all = meta.tracks?.hands ?? [];
+    const hi = swingEnd ?? Number.POSITIVE_INFINITY;
+    return all.filter((point) => point[0] >= swingStart && point[0] <= hi);
+  }, [meta, swingStart, swingEnd]);
+
+  // 궤적은 재생과 함께 움직여야 한다. timeupdate 는 초당 4회 정도라 끊겨
+  // 보이므로 화면 주사율에 맞춰 다시 그린다.
+  useEffect(() => {
+    if (!showTrack || trackPoints.length < 2) return;
+    let raf = 0;
+    const tick = () => {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      if (canvas && video) drawHandPath(canvas, video, trackPoints, topSec);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [showTrack, trackPoints, topSec]);
 
   if (isLoading) {
     return (
@@ -236,7 +377,6 @@ export default function AnalysisResultPage() {
   const overlays = result.overlay_urls ?? {};
   const hasAiFeedback = issues.length > 0 || drills.length > 0;
 
-  const meta = readMeta(metrics);
   const measuredCount = METRIC_ORDER.filter((k) =>
     hasValue(readMetric(metrics, k)),
   ).length;
@@ -387,8 +527,9 @@ export default function AnalysisResultPage() {
         // 예전에는 person_y_min 으로 상단 배경을 잘라냈으나 그 지표는 제거됐다.
         // 영상을 그대로 보여주고 재생 구간만 스윙에 맞춘다.
         const padPct = (9 / 16) * 100;
-        const startSec = meta.swing_start_sec ?? 0;
-        const endSec = meta.swing_end_sec;
+
+        const startSec = swingStart;
+        const endSec = swingEnd;
 
         return (
           <div className="mt-6" ref={videoSectionRef}>
@@ -408,17 +549,29 @@ export default function AnalysisResultPage() {
                   }}
                   onTimeUpdate={(e) => {
                     const v = e.currentTarget;
-                    // 구간 반복. 단계 재생 중이면 그 좁은 구간을, 아니면 스윙 전체를 돈다.
+                    // 전체 영상 보기를 켜면 자르지 않는다. 그 외에는 단계 구간
+                    // 또는 스윙 구간 안에서만 돌고, 끝에 닿으면 앞으로 되돌린다.
+                    if (fullVideo && !loopRange) return;
                     const lo = loopRange ? loopRange.start : startSec;
                     const hi = loopRange ? loopRange.end : (endSec ?? v.duration);
                     if (v.currentTime >= hi) {
                       v.currentTime = lo;
                       v.play().catch(() => {});
+                    } else if (v.currentTime < lo - 0.05) {
+                      // 사용자가 구간보다 앞으로 되감으면 구간 시작에 붙인다.
+                      v.currentTime = lo;
                     }
                   }}
                 >
                   <source src={overlays["original_video"]} type="video/mp4" />
                 </video>
+                {showTrack && (
+                  // pointerEvents:none 이라야 캔버스 아래의 영상 컨트롤을 누를 수 있다.
+                  <canvas
+                    ref={canvasRef}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+                  />
+                )}
               </div>
 
               {/* 재생 속도 */}
@@ -437,6 +590,32 @@ export default function AnalysisResultPage() {
                     {s}×
                   </button>
                 ))}
+                {trackPoints.length > 1 && (
+                  <button
+                    className={`chip ${showTrack ? "accent" : ""}`}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setShowTrack((on) => !on)}
+                  >
+                    {showTrack ? "✓ 손 궤적" : "손 궤적"}
+                  </button>
+                )}
+                <button
+                  className={`chip ${fullVideo ? "accent" : ""}`}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    const next = !fullVideo;
+                    setFullVideo(next);
+                    setLoopRange(null);
+                    setActivePhase(null);
+                    const v = videoRef.current;
+                    if (v) {
+                      v.currentTime = next ? 0 : startSec;
+                      v.play().catch(() => {});
+                    }
+                  }}
+                >
+                  {fullVideo ? "✓ 전체 영상" : "전체 영상 보기"}
+                </button>
                 {loopRange && (
                   <button
                     className="chip"
@@ -447,16 +626,28 @@ export default function AnalysisResultPage() {
                       if (videoRef.current) videoRef.current.currentTime = startSec;
                     }}
                   >
-                    전체 구간으로
+                    스윙 구간으로
                   </button>
                 )}
               </div>
+
+              {showTrack && (
+                <div className="viewer-controls" style={{ gap: 12, flexWrap: "wrap" }}>
+                  <span className="text-xs" style={{ color: `rgb(${BACKSWING_RGB})` }}>— 백스윙</span>
+                  <span className="text-xs" style={{ color: `rgb(${DOWNSWING_RGB})` }}>— 다운스윙</span>
+                  <span className="text-xs text-muted">
+                    양 손목 중점의 궤적입니다. 클럽헤드는 추적하지 않습니다.
+                  </span>
+                </div>
+              )}
 
               <div className="viewer-controls" style={{ justifyContent: "space-between" }}>
                 <span className="mono text-xs text-muted">
                   {loopRange
                     ? `${PHASE_LABELS[activePhase ?? ""] ?? "구간"} 반복: ${loopRange.start.toFixed(1)}s ~ ${loopRange.end.toFixed(1)}s`
-                    : `스윙 구간: ${startSec.toFixed(1)}s ~ ${endSec?.toFixed(1)}s`}
+                    : fullVideo
+                      ? "전체 영상 재생 중"
+                      : `스윙 구간: ${startSec.toFixed(1)}s ~ ${endSec?.toFixed(1)}s`}
                 </span>
                 <a href={overlays["original_video"]} download target="_blank" className="btn sm">
                   ↓ 원본 다운로드

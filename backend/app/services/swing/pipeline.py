@@ -31,6 +31,7 @@ from app.services.swing.metrics import compute_metrics, metrics_to_json
 from app.services.swing.overlay import render_overlay
 from app.services.swing.phases import detect_phases, detect_swing_window
 from app.services.swing.pose import extract_sequence
+from app.services.swing.tracks import build_tracks
 from app.services.swing.types import PoseSequence
 
 PHASE_LABELS: dict[str, str] = {
@@ -142,6 +143,8 @@ async def process_pose_estimation(upload_id: uuid.UUID) -> None:
                 "swing_start_sec": round(start_f / fps, 2),
                 "swing_end_sec": round(end_f / fps, 2),
                 "phase_seconds": phase_seconds,
+                # 프레임별 손 궤적. 영상 위에 겹쳐 그린다.
+                "tracks": build_tracks(seq),
                 **summarise_metrics(
                     {k: v for k, v in metrics_payload.items() if k != "_meta"}
                 ),

@@ -62,6 +62,12 @@ export function readMetric(
   return isMetricEntry(entry) ? entry : undefined;
 }
 
+/**
+ * 궤적 점 하나. [초, x, y] 이고 x·y 는 0~1 정규화 좌표다.
+ * 영상의 표시 크기를 모르는 채로 저장되므로, 그릴 때 화면 좌표로 환산한다.
+ */
+export type TrackPoint = [number, number, number];
+
 /** metrics 페이로드의 "_meta" 에 함께 오는 부가 정보. */
 export interface SwingMeta {
   camera_angle?: string;
@@ -69,6 +75,8 @@ export interface SwingMeta {
   swing_end_sec?: number;
   /** 단계별 시각(초). 카드를 누르면 영상의 이 지점으로 이동한다. */
   phase_seconds?: Record<string, number>;
+  /** 프레임별 손 궤적. 백엔드가 측정한 프레임만 들어 있다. */
+  tracks?: { hands: TrackPoint[] };
   measured_count?: number;
   total_count?: number;
 }
@@ -114,11 +122,30 @@ export function readMeta(metrics: Record<string, unknown> | undefined): SwingMet
     }
   }
 
+  // 궤적도 숫자 3개짜리 배열만 걸러 담는다. 예전 분석 결과에는 없는 필드다.
+  const hands: TrackPoint[] = [];
+  const rawTracks = raw.tracks;
+  if (typeof rawTracks === "object" && rawTracks !== null) {
+    const rawHands = (rawTracks as Record<string, unknown>).hands;
+    if (Array.isArray(rawHands)) {
+      for (const point of rawHands) {
+        if (
+          Array.isArray(point) &&
+          point.length >= 3 &&
+          point.slice(0, 3).every((n) => typeof n === "number" && Number.isFinite(n))
+        ) {
+          hands.push([point[0], point[1], point[2]] as TrackPoint);
+        }
+      }
+    }
+  }
+
   return {
     camera_angle: typeof raw.camera_angle === "string" ? raw.camera_angle : undefined,
     swing_start_sec: num("swing_start_sec"),
     swing_end_sec: num("swing_end_sec"),
     phase_seconds: Object.keys(phaseSeconds).length > 0 ? phaseSeconds : undefined,
+    tracks: hands.length > 1 ? { hands } : undefined,
     measured_count: num("measured_count"),
     total_count: num("total_count"),
   };
