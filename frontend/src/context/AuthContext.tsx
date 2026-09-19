@@ -12,7 +12,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, inviteCode: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -35,8 +35,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apiClient.defaults.headers.common["Authorization"] = `Bearer ${u.access_token}`;
   };
 
-  const register = async (email: string, password: string) => {
-    const res = await apiClient.post("/auth/register", { email, password });
+  const register = async (email: string, password: string, inviteCode: string) => {
+    // 필드명은 백엔드 RegisterRequest 와 같은 스네이크케이스여야 한다.
+    const res = await apiClient.post("/auth/register", {
+      email,
+      password,
+      invite_code: inviteCode,
+    });
     const u: User = res.data;
     setUser(u);
     localStorage.setItem("swingmaster_user", JSON.stringify(u));
