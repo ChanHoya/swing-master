@@ -22,8 +22,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     # ── CORS ─────────────────────────────────────────────────────────────────
+    # 같은 와이파이의 폰에서 접속하려면 맥의 LAN 주소도 허용해야 한다.
+    # .local 이름은 IP 가 바뀌어도 그대로라 고정 주소로 쓸 수 있다.
+    # 다른 기기나 IP 를 쓸 때는 CORS_ORIGINS 환경변수로 덮어쓴다.
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://MacBook-Air.local:3000",
         "https://*.vercel.app",
     ]
 

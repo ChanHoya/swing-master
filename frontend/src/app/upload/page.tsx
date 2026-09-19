@@ -211,7 +211,34 @@ export default function UploadPage() {
             }}
             aria-hidden="true"
           />
+
+          {/* capture 속성이 있으면 폰에서 카메라가 바로 열린다.
+              PC 브라우저는 이 속성을 무시하고 파일 선택창을 띄우므로
+              양쪽에서 모두 안전하다. */}
+          <input
+            id="upload-camera-input"
+            type="file"
+            accept="video/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+            aria-hidden="true"
+          />
         </div>
+      )}
+
+      {/* 폰으로 바로 촬영하기 — 메신저를 거치지 않고 바로 올린다 */}
+      {!isWorking && !uploadId && (
+        <button
+          className="btn primary w-full mt-3"
+          style={{ padding: 14 }}
+          onClick={() => document.getElementById("upload-camera-input")?.click()}
+        >
+          📹 폰으로 바로 촬영하기
+        </button>
       )}
 
       {/* Working State */}
