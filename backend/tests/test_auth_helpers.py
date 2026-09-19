@@ -1,8 +1,8 @@
 """
 app/core/auth.py 의 인증 헬퍼 테스트.
 
-업로드는 로그인 없이도 되어야 하지만, 로그인했다면 그 사용자에게
-귀속되어야 한다. 그래야 나중에 히스토리에서 찾을 수 있다.
+업로드에는 로그인이 필요하다. 로그인한 사용자에게 귀속되어야
+나중에 히스토리에서 찾을 수 있다.
 """
 import uuid
 
@@ -10,11 +10,7 @@ import pytest
 from fastapi import HTTPException
 from jose import jwt
 
-from app.core.auth import (
-    decode_user_id,
-    get_current_user_id,
-    get_optional_user_id,
-)
+from app.core.auth import decode_user_id, get_current_user_id
 from app.core.config import settings
 
 USER_ID = str(uuid.uuid4())
@@ -53,23 +49,6 @@ def test_decode_returns_none_when_signed_with_wrong_secret():
 def test_decode_returns_none_when_sub_claim_missing():
     token = jwt.encode({"email": "x@y.z"}, settings.SECRET_KEY, algorithm="HS256")
     assert decode_user_id(f"Bearer {token}") is None
-
-
-# ── get_optional_user_id — 없으면 None, 막지 않는다 ─────────────────────
-@pytest.mark.asyncio
-async def test_optional_returns_user_id_when_logged_in():
-    assert await get_optional_user_id(_bearer()) == USER_ID
-
-
-@pytest.mark.asyncio
-async def test_optional_returns_none_when_anonymous():
-    """비로그인 업로드를 막으면 안 된다. ANON_DAILY_LIMIT 설계가 전제다."""
-    assert await get_optional_user_id(None) is None
-
-
-@pytest.mark.asyncio
-async def test_optional_returns_none_for_invalid_token_without_raising():
-    assert await get_optional_user_id("Bearer broken") is None
 
 
 # ── get_current_user_id — 없으면 401 ───────────────────────────────────

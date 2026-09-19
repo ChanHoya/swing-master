@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.auth import verify_invite_code
 from app.core.config import settings
 from app.models import User
 
@@ -27,6 +28,7 @@ JWT_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    invite_code: str
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -56,6 +58,9 @@ def create_token(user_id: str, email: str) -> str:
 
 @router.post("/register", response_model=AuthResponse)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    # 가장 먼저 검증한다. 코드가 틀린 요청에 이메일 존재 여부를 알려 주지 않는다.
+    verify_invite_code(body.invite_code)
+
     # 중복 이메일 체크
     stmt = select(User).where(User.email == body.email)
     result = await db.execute(stmt)
