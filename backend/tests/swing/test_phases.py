@@ -79,3 +79,55 @@ def test_minimum_viable_sequence_still_yields_ordered_phases():
     order = [phases[k] for k in PHASE_KEYS]
     assert order == sorted(order)
     assert max(order) <= 3
+
+
+def _sequence_with_preamble(frames: int = 60, preamble: int = 20) -> PoseSequence:
+    """스윙 앞에 잡움직임(걸어 들어오기·연습 스윙)이 붙은 시퀀스.
+
+    실제 영상 3개가 이 모양 때문에 실패했다. address 를 앞에서부터 찾으면
+    그 잡움직임을 스윙 시작으로 오인해 스윙 길이가 6~13초로 부풀었다.
+    """
+    xy = np.zeros((frames, 33, 2), dtype=np.float32)
+    swing_len = frames - preamble
+    for f in range(frames):
+        if f < preamble:
+            # 잡움직임: 손목이 오르내리지만 스윙은 아니다
+            wrist_y = 650.0 + (30.0 if f % 4 < 2 else -30.0)
+        else:
+            wrist_y = _wrist_height(f - preamble, swing_len)
+        xy[f, L_WRIST] = (500.0, wrist_y)
+        xy[f, R_WRIST] = (510.0, wrist_y)
+        xy[f, L_SHOULDER] = (450.0, 400.0)
+        xy[f, R_SHOULDER] = (550.0, 400.0)
+    return PoseSequence(
+        world=np.zeros((frames, 33, 3), dtype=np.float32),
+        xy_px=xy,
+        visibility=np.full((frames, 33), 0.9, dtype=np.float32),
+        frame_indices=np.arange(frames, dtype=np.int32),
+        fps=30.0,
+        resolution_wh=(1000, 1000),
+    )
+
+
+def test_address_is_not_dragged_to_the_start_by_preamble_motion():
+    """스윙 앞의 잡움직임을 어드레스로 오인하면 안 된다.
+
+    어드레스는 백스윙 직전의 마지막 정지다. 영상 맨 앞이 아니다.
+    """
+    seq = _sequence_with_preamble(frames=60, preamble=20)
+    phases = detect_phases(seq)
+    assert phases["address"] >= 12, (
+        f"어드레스가 {phases['address']} 로 잡혔다 — 잡움직임 구간(0~19)에 끌려갔다"
+    )
+
+
+def test_swing_duration_stays_physically_plausible():
+    """어드레스~피니시가 실제 스윙 길이여야 한다.
+
+    골프 스윙은 1~3초다. 6초가 넘으면 스윙이 아닌 구간을 포함한 것이다.
+    """
+    seq = _sequence_with_preamble(frames=60, preamble=20)
+    phases = detect_phases(seq)
+    fi = seq.frame_indices
+    duration = (fi[phases["finish"]] - fi[phases["address"]]) / seq.fps
+    assert 0.5 <= duration <= 3.5, f"스윙 길이 {duration:.2f}초 — 물리적으로 부적절"

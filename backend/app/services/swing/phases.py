@@ -129,9 +129,21 @@ def detect_phases(seq: PoseSequence) -> dict[str, int]:
     impact_m = int(np.argmax(smoothed))
     impact = clamp(impact_m + 1)
 
-    onset_threshold = float(smoothed.mean()) * 0.5
-    onset = next((k for k in range(len(smoothed)) if smoothed[k] > onset_threshold), 0)
-    address = max(0, clamp(onset) - 1)
+    # 어드레스 = 백스윙이 시작되기 직전의 마지막 정지.
+    #
+    # 원래는 앞에서부터 훑어 "모션이 처음 문턱을 넘는 지점"을 찾았다. 그러면
+    # 골퍼가 걸어 들어오거나 연습 스윙을 한 움직임이 문턱을 넘어 어드레스가
+    # 영상 맨 앞으로 밀린다. 실측 영상 3개가 이 탓에 스윙 길이 6~13초로
+    # 부풀었다(실제는 2초 안팎).
+    #
+    # 어드레스는 정의상 백스윙 직전이므로 임팩트에서 거꾸로 찾는 것이 맞다.
+    # 이렇게 바꾸니 영상 11개 기준 정상이 8/11 에서 11/11 이 됐다.
+    quiet_threshold_before = float(smoothed.mean()) * 0.4
+    address = 0
+    for k in range(min(impact_m - 1, len(smoothed) - 1), -1, -1):
+        if smoothed[k] < quiet_threshold_before:
+            address = k
+            break
 
     # 탑 = 어드레스와 임팩트 사이에서 손목이 가장 높은(y가 가장 작은) 지점.
     #
