@@ -62,6 +62,12 @@ from app.core.config import parse_origins
         # 망가진 JSON — 죽지 말고 건져낼 수 있는 만큼 건진다
         ('["https://a.vercel.app"', ["https://a.vercel.app"]),
         ("['https://a.vercel.app']", ["https://a.vercel.app"]),
+        # 끝 슬래시 — 주소창에서 복사하면 따라온다. Origin 헤더에는
+        # 경로가 없으므로 슬래시가 붙은 값은 무엇과도 매칭되지 않는다.
+        ("https://a.vercel.app/", ["https://a.vercel.app"]),
+        ('["https://a.vercel.app/"]', ["https://a.vercel.app"]),
+        ("http://localhost:3000/,https://a.vercel.app/",
+         ["http://localhost:3000", "https://a.vercel.app"]),
         # 빈 값
         ("", []),
         ("   ", []),

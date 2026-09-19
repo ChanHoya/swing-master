@@ -7,6 +7,16 @@ from functools import lru_cache
 from typing import List
 
 
+def _normalise(origin: str) -> str:
+    """오리진 하나를 다듬는다.
+
+    끝의 슬래시를 뗀다. 브라우저의 Origin 헤더는 스킴+호스트+포트만 담고
+    경로가 없으므로, 슬래시가 붙은 값은 무엇과도 매칭되지 않는다. 주소창에서
+    복사하면 슬래시가 따라오기 때문에 실제로 배포가 이것 때문에 막혔다.
+    """
+    return origin.strip().strip("\"'[] ").rstrip("/")
+
+
 def parse_origins(raw: str) -> List[str]:
     """CORS 오리진 문자열을 리스트로. JSON 배열과 쉼표 구분을 모두 받는다.
 
@@ -29,10 +39,10 @@ def parse_origins(raw: str) -> List[str]:
             pass  # 아래 쉼표 분리로 건져 본다
         else:
             if isinstance(value, list):
-                return [str(v).strip() for v in value if str(v).strip()]
+                return [_normalise(str(v)) for v in value if _normalise(str(v))]
             return []
 
-    cleaned = (p.strip().strip("\"'[] ") for p in raw.split(","))
+    cleaned = (_normalise(p) for p in raw.split(","))
     return [p for p in cleaned if p]
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
