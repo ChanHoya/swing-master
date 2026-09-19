@@ -9,6 +9,7 @@ import {
   METRIC_META,
   METRIC_ORDER,
   PHASE_LABELS,
+  PHASE_ORDER,
   formatMetric,
   hasValue,
   isLowConfidence,
@@ -19,10 +20,29 @@ import {
 
 /** 재생 속도 선택지. 임팩트는 0.25배속 아래로 내려야 눈에 들어온다. */
 const SPEEDS = [1, 0.75, 0.5, 0.25, 0.1] as const;
-const SLOW_SPEED = 0.25;
 
-/** 단계 재생 시 앞뒤로 볼 시간(초). 1초 구간을 0.25배속이면 4초쯤 재생된다. */
-const PHASE_WINDOW_SEC = 0.5;
+/**
+ * 단계 재생이 화면에서 차지했으면 하는 시간(초).
+ *
+ * 구간 길이는 단계마다 다르다. 어드레스~테이크백은 여유롭지만
+ * 탑~다운스윙~임팩트는 순식간에 지나간다. 배속을 고정하면 빠른 구간은
+ * 여전히 안 보이고 느린 구간은 지루하다. 그래서 속도를 고정하지 않고
+ * "재생에 걸리는 시간"을 고정하고 배속을 거꾸로 계산한다.
+ */
+// 실제 스윙(어드레스 2.57s ~ 피니시 4.03s)으로 맞춰 본 값. 2.0 이면
+// 다운스윙·임팩트가 0.1배속, 테이크백·탑·피니시가 0.25배속으로 갈린다.
+// 더 키우면 전부 0.1배속으로 쏠리고, 줄이면 빠른 구간이 안 느려진다.
+const TARGET_PLAY_SEC = 2.0;
+
+/** 구간 길이에 맞는 배속을 고른다. 짧은 구간일수록 느려진다. */
+function speedForSpan(spanSec: number): number {
+  // 재생 시간이 TARGET 이상이 되는 가장 빠른 배속을 쓴다.
+  const usable = [...SPEEDS].sort((a, b) => b - a);
+  for (const s of usable) {
+    if (spanSec / s >= TARGET_PLAY_SEC) return s;
+  }
+  return usable[usable.length - 1]; // 가장 느린 값
+}
 
 // ─── Types ────────────────────────────────────────────────────
 interface Issue {
@@ -229,7 +249,8 @@ export default function AnalysisResultPage() {
    * 임팩트처럼 순식간에 지나가는 구간을 눈으로 보려면 느리게 돌려야 한다.
    */
   const goToPhase = (phase: string, loop: boolean) => {
-    const at = meta.phase_seconds?.[phase];
+    const times = meta.phase_seconds ?? {};
+    const at = times[phase];
     const video = videoRef.current;
     if (at === undefined || !video) return;
 
@@ -237,11 +258,23 @@ export default function AnalysisResultPage() {
     videoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
 
     if (loop) {
-      const start = Math.max(0, at - PHASE_WINDOW_SEC);
-      const end = at + PHASE_WINDOW_SEC;
+      // 구간은 앞 단계부터 뒤 단계까지. 그래야 "이 단계 전후로 무엇이
+      // 달라지는지"가 보인다. 양끝 단계는 한쪽이 없으므로 반대쪽 간격을 빌린다.
+      const order = PHASE_ORDER.filter((k) => times[k] !== undefined);
+      const i = order.indexOf(phase);
+      const prev = i > 0 ? times[order[i - 1]] : undefined;
+      const next = i >= 0 && i < order.length - 1 ? times[order[i + 1]] : undefined;
+
+      const before = prev !== undefined ? at - prev : (next !== undefined ? next - at : 0.5);
+      const after = next !== undefined ? next - at : (prev !== undefined ? at - prev : 0.5);
+
+      const start = Math.max(0, at - before);
+      const end = at + after;
+      const rate = speedForSpan(end - start);
+
       setLoopRange({ start, end });
-      setSpeed(SLOW_SPEED);
-      video.playbackRate = SLOW_SPEED;
+      setSpeed(rate);
+      video.playbackRate = rate;
       video.currentTime = start;
       video.play().catch(() => {});
     } else {
