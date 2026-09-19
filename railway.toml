@@ -1,13 +1,16 @@
+# Railway 배포 설정.
+#
+# nixpacks 대신 backend/Dockerfile 을 쓴다. nixpacks 는 Python 버전과
+# 시스템 라이브러리를 추론하는데, 이 백엔드는 OpenCV·MediaPipe 용
+# libgl1·libglib2.0-0·libgomp1 과 한글 폰트(fonts-nanum)가 필요하고
+# requirements.txt 가 Python 3.13 에 고정돼 있어 추론에 맡기기 어렵다.
+
 [build]
-builder = "@nixpacks/nixpacks"
+builder = "dockerfile"
+dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = """
-cd /app/backend && \
-pip install -qr requirements.txt && \
-python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
-"""
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
