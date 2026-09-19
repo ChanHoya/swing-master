@@ -2,8 +2,38 @@
 Application Configuration — Pydantic Settings
 Reads from environment variables (or .env file)
 """
+import json
 from functools import lru_cache
 from typing import List
+
+
+def parse_origins(raw: str) -> List[str]:
+    """CORS 오리진 문자열을 리스트로. JSON 배열과 쉼표 구분을 모두 받는다.
+
+    환경변수 이름을 List[str] 로 선언하면 pydantic-settings 가 값을
+    json.loads 로 먼저 해석하고, 실패하면 필드 검증기에 닿기도 전에
+    SettingsError 를 던진다. 대시보드에서 따옴표 하나만 어긋나도 앱이
+    기동조차 못 하고 죽는다. 실제로 Render 배포가 그렇게 실패했다.
+
+    그래서 문자열로 받아 여기서 직접 판다. 무엇이 들어와도 예외를 던지지
+    않는다 — 기동 실패보다 빈 목록이 낫다.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return []
+
+    if raw.startswith("["):
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            pass  # 아래 쉼표 분리로 건져 본다
+        else:
+            if isinstance(value, list):
+                return [str(v).strip() for v in value if str(v).strip()]
+            return []
+
+    cleaned = (p.strip().strip("\"'[] ") for p in raw.split(","))
+    return [p for p in cleaned if p]
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -30,11 +60,13 @@ class Settings(BaseSettings):
     # ("return origin in self.allow_origins") "https://*.vercel.app" 같은
     # 와일드카드는 에러 없이 조용히 아무것도 매칭하지 않는다.
     # 패턴이 필요하면 아래 CORS_ORIGIN_REGEX 를 쓴다.
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://MacBook-Air.local:3000",
-    ]
+    # 문자열로 받는다 — 위 parse_origins 의 설명 참고. 읽을 때는
+    # settings.cors_origins 를 쓴다.
+    # JSON 배열 ["https://a.app","https://b.app"] 과
+    # 쉼표 구분  https://a.app,https://b.app  을 모두 받는다.
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,http://MacBook-Air.local:3000"
+    )
 
     # Vercel 프리뷰처럼 주소가 매번 바뀌는 경우에만 쓴다. 전부 여는 대신
     # 프로젝트로 좁힌 패턴을 넣는다.
@@ -70,6 +102,11 @@ class Settings(BaseSettings):
 
     # ── Sentry ───────────────────────────────────────────────────────────────
     SENTRY_DSN: str = ""
+
+    @property
+    def cors_origins(self) -> List[str]:
+        """CORSMiddleware 에 넘길 오리진 목록."""
+        return parse_origins(self.CORS_ORIGINS)
 
 
 @lru_cache
