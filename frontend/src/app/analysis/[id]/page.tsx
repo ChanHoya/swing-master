@@ -296,6 +296,8 @@ export default function AnalysisResultPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showTrack, setShowTrack] = useState(false);
   const [fullVideo, setFullVideo] = useState(false);
+  // 영상의 세로/가로 비율. 메타데이터를 읽기 전에는 모른다.
+  const [aspect, setAspect] = useState<number | null>(null);
 
   const { data: result, isLoading, isError } = useQuery<AnalysisResult>({
     queryKey: ["analysisResult", id],
@@ -526,10 +528,10 @@ export default function AnalysisResultPage() {
       {overlays["original_video"] && meta.swing_start_sec !== undefined && (() => {
         // 예전에는 person_y_min 으로 상단 배경을 잘라냈으나 그 지표는 제거됐다.
         // 영상을 그대로 보여주고 재생 구간만 스윙에 맞춘다.
-        const padPct = (9 / 16) * 100;
 
         const startSec = swingStart;
         const endSec = swingEnd;
+        const aspectRatio = aspect ?? 9 / 16;
 
         return (
           <div className="mt-6" ref={videoSectionRef}>
@@ -537,15 +539,34 @@ export default function AnalysisResultPage() {
               <div className="card-title">🎬 스윙 구간 다시보기</div>
             </div>
             <div className="viewer">
-              <div style={{ position: "relative", width: "100%", paddingBottom: `${padPct}%`, overflow: "hidden", background: "#000" }}>
+              {/*
+                영상 비율에 맞춘 박스. 16:9 로 고정하면 폰으로 찍은 세로 영상이
+                좌우로 크게 비어 작게 보인다. 비율을 알기 전에는 16:9 로 둔다.
+                세로 영상은 화면을 다 먹지 않도록 높이를 제한하고 폭을 그만큼 줄인다.
+              */}
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  maxWidth: aspectRatio > 1 ? `calc(75vh / ${aspectRatio})` : undefined,
+                  margin: "0 auto",
+                  aspectRatio: `1 / ${aspectRatio}`,
+                  overflow: "hidden",
+                  background: "#000",
+                }}
+              >
                 <video
                   ref={videoRef}
                   key={overlays["original_video"]}
                   controls playsInline preload="metadata"
                   style={{ position: "absolute", width: "100%", height: "100%", top: 0, left: 0, objectFit: "contain" }}
                   onLoadedMetadata={(e) => {
-                    e.currentTarget.currentTime = startSec;
-                    e.currentTarget.playbackRate = speed;
+                    const v = e.currentTarget;
+                    if (v.videoWidth > 0 && v.videoHeight > 0) {
+                      setAspect(v.videoHeight / v.videoWidth);
+                    }
+                    v.currentTime = startSec;
+                    v.playbackRate = speed;
                   }}
                   onTimeUpdate={(e) => {
                     const v = e.currentTarget;
