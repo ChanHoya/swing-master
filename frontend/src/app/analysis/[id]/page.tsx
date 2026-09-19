@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
@@ -7,6 +8,7 @@ import Link from "next/link";
 import {
   METRIC_META,
   METRIC_ORDER,
+  PHASE_LABELS,
   formatMetric,
   hasValue,
   isLowConfidence,
@@ -14,6 +16,13 @@ import {
   readMeta,
   readMetric,
 } from "@/lib/metrics";
+
+/** 재생 속도 선택지. 임팩트는 0.25배속쯤 되어야 눈에 들어온다. */
+const SPEEDS = [1, 0.75, 0.5, 0.25] as const;
+const SLOW_SPEED = 0.25;
+
+/** 단계 재생 시 앞뒤로 볼 시간(초). 1초 구간을 0.25배속이면 4초쯤 재생된다. */
+const PHASE_WINDOW_SEC = 0.5;
 
 // ─── Types ────────────────────────────────────────────────────
 interface Issue {
@@ -159,6 +168,13 @@ export default function AnalysisResultPage() {
   const router = useRouter();
   const id = params?.id as string;
 
+  // 훅은 조기 반환보다 앞에 있어야 한다. 로딩·에러 분기가 아래에 있다.
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoSectionRef = useRef<HTMLDivElement | null>(null);
+  const [speed, setSpeed] = useState<number>(1);
+  const [loopRange, setLoopRange] = useState<{ start: number; end: number } | null>(null);
+  const [activePhase, setActivePhase] = useState<string | null>(null);
+
   const { data: result, isLoading, isError } = useQuery<AnalysisResult>({
     queryKey: ["analysisResult", id],
     queryFn: async () => {
@@ -204,6 +220,36 @@ export default function AnalysisResultPage() {
   const measuredCount = METRIC_ORDER.filter((k) =>
     hasValue(readMetric(metrics, k)),
   ).length;
+
+  /**
+   * 단계 카드를 눌렀을 때 영상을 그 지점으로 옮긴다.
+   *
+   * loop=false 면 그 지점에 멈춰 세워 두고 사용자가 재생 버튼을 누르게 한다.
+   * loop=true 면 앞뒤 PHASE_WINDOW_SEC 만큼을 0.25배속으로 반복 재생한다.
+   * 임팩트처럼 순식간에 지나가는 구간을 눈으로 보려면 느리게 돌려야 한다.
+   */
+  const goToPhase = (phase: string, loop: boolean) => {
+    const at = meta.phase_seconds?.[phase];
+    const video = videoRef.current;
+    if (at === undefined || !video) return;
+
+    setActivePhase(phase);
+    videoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    if (loop) {
+      const start = Math.max(0, at - PHASE_WINDOW_SEC);
+      const end = at + PHASE_WINDOW_SEC;
+      setLoopRange({ start, end });
+      setSpeed(SLOW_SPEED);
+      video.playbackRate = SLOW_SPEED;
+      video.currentTime = start;
+      video.play().catch(() => {});
+    } else {
+      setLoopRange(null);
+      video.currentTime = at;
+      video.pause();
+    }
+  };
 
   return (
     <div className="animate-fadein" style={{ maxWidth: 960 }}>
@@ -309,26 +355,31 @@ export default function AnalysisResultPage() {
         // 영상을 그대로 보여주고 재생 구간만 스윙에 맞춘다.
         const padPct = (9 / 16) * 100;
         const startSec = meta.swing_start_sec ?? 0;
+        const endSec = meta.swing_end_sec;
 
         return (
-          <div className="mt-6">
+          <div className="mt-6" ref={videoSectionRef}>
             <div className="card-head">
               <div className="card-title">🎬 스윙 구간 다시보기</div>
             </div>
             <div className="viewer">
               <div style={{ position: "relative", width: "100%", paddingBottom: `${padPct}%`, overflow: "hidden", background: "#000" }}>
                 <video
+                  ref={videoRef}
                   key={overlays["original_video"]}
-                  controls loop playsInline preload="metadata"
+                  controls playsInline preload="metadata"
                   style={{ position: "absolute", width: "100%", height: "100%", top: 0, left: 0, objectFit: "contain" }}
                   onLoadedMetadata={(e) => {
                     e.currentTarget.currentTime = startSec;
+                    e.currentTarget.playbackRate = speed;
                   }}
                   onTimeUpdate={(e) => {
                     const v = e.currentTarget;
-                    const end = meta.swing_end_sec ?? v.duration;
-                    if (v.currentTime >= end) {
-                      v.currentTime = startSec;
+                    // 구간 반복. 단계 재생 중이면 그 좁은 구간을, 아니면 스윙 전체를 돈다.
+                    const lo = loopRange ? loopRange.start : startSec;
+                    const hi = loopRange ? loopRange.end : (endSec ?? v.duration);
+                    if (v.currentTime >= hi) {
+                      v.currentTime = lo;
                       v.play().catch(() => {});
                     }
                   }}
@@ -336,9 +387,43 @@ export default function AnalysisResultPage() {
                   <source src={overlays["original_video"]} type="video/mp4" />
                 </video>
               </div>
+
+              {/* 재생 속도 */}
+              <div className="viewer-controls" style={{ gap: 8, flexWrap: "wrap" }}>
+                <span className="text-xs text-muted">재생 속도</span>
+                {SPEEDS.map((s) => (
+                  <button
+                    key={s}
+                    className={`chip ${speed === s ? "accent" : ""}`}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setSpeed(s);
+                      if (videoRef.current) videoRef.current.playbackRate = s;
+                    }}
+                  >
+                    {s}×
+                  </button>
+                ))}
+                {loopRange && (
+                  <button
+                    className="chip"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setLoopRange(null);
+                      setActivePhase(null);
+                      if (videoRef.current) videoRef.current.currentTime = startSec;
+                    }}
+                  >
+                    전체 구간으로
+                  </button>
+                )}
+              </div>
+
               <div className="viewer-controls" style={{ justifyContent: "space-between" }}>
                 <span className="mono text-xs text-muted">
-                  스윙 구간: {startSec.toFixed(1)}s ~ {meta.swing_end_sec?.toFixed(1)}s
+                  {loopRange
+                    ? `${PHASE_LABELS[activePhase ?? ""] ?? "구간"} 반복: ${loopRange.start.toFixed(1)}s ~ ${loopRange.end.toFixed(1)}s`
+                    : `스윙 구간: ${startSec.toFixed(1)}s ~ ${endSec?.toFixed(1)}s`}
                 </span>
                 <a href={overlays["original_video"]} download target="_blank" className="btn sm">
                   ↓ 원본 다운로드
@@ -399,25 +484,41 @@ export default function AnalysisResultPage() {
                       (e.currentTarget as HTMLElement).style.transform = "none";
                       (e.currentTarget as HTMLElement).style.borderColor = `color-mix(in srgb, ${p.color} 30%, transparent)`;
                     }}
+                    // 카드를 누르면 영상을 그 단계로 옮기고 멈춰 둔다.
+                    // 재생은 사용자가 영상의 재생 버튼으로 시작한다.
+                    onClick={() => goToPhase(p.key, false)}
                   >
-                    {/* 단계 번호 */}
+                    {/* 단계 번호 + 시각 */}
                     <div style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: 10,
-                      color: p.color,
-                      letterSpacing: "0.1em",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                       marginBottom: 4,
                     }}>
-                      {p.label.split(".")[0]}.
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 10,
+                        color: p.color,
+                        letterSpacing: "0.1em",
+                      }}>
+                        {p.label.split(".")[0]}.
+                      </span>
+                      {meta.phase_seconds?.[p.key] !== undefined && (
+                        <span className="mono text-xs text-muted">
+                          {meta.phase_seconds[p.key].toFixed(1)}s
+                        </span>
+                      )}
                     </div>
 
                     {/* 이미지 — 세로로 길게 (전신 보이도록) */}
                     <div style={{
+                      position: "relative",
                       height: 260,
                       borderRadius: 8,
                       overflow: "hidden",
                       background: "#000",
                       marginBottom: 6,
+                      outline: activePhase === p.key ? `2px solid ${p.color}` : "none",
                     }}>
                       <img
                         src={overlays[p.key]}
@@ -430,6 +531,36 @@ export default function AnalysisResultPage() {
                           display: "block",
                         }}
                       />
+
+                      {/* 이 단계 전후를 느리게 반복 재생한다.
+                          카드 클릭(이동)과 구분되도록 이벤트 전파를 막는다. */}
+                      {meta.phase_seconds?.[p.key] !== undefined && (
+                        <button
+                          aria-label={`${p.label} 구간 느리게 반복 재생`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goToPhase(p.key, true);
+                          }}
+                          style={{
+                            position: "absolute",
+                            left: "50%",
+                            top: "50%",
+                            transform: "translate(-50%, -50%)",
+                            width: 44,
+                            height: 44,
+                            borderRadius: "50%",
+                            border: `2px solid ${p.color}`,
+                            background: "rgba(0,0,0,0.55)",
+                            color: p.color,
+                            fontSize: 16,
+                            cursor: "pointer",
+                            display: "grid",
+                            placeItems: "center",
+                          }}
+                        >
+                          ▶
+                        </button>
+                      )}
                     </div>
 
                     {/* 단계명 */}

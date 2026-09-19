@@ -129,12 +129,16 @@ export default function UploadPage() {
 
       {/* Drop Zone */}
       {!isWorking && !uploadId && (
-        <div
+        // label 로 감싸면 브라우저가 네이티브로 파일 선택창을 연다.
+        // 예전에는 div 의 onClick 에서 input.click() 을 불렀는데, iOS 사파리는
+        // display:none 인 input 에 대한 JS 클릭을 무시해 폰에서 아무 반응이
+        // 없었다. label+htmlFor 는 JS 없이 동작하므로 기기를 가리지 않는다.
+        <label
           id="upload-drop-zone"
-          role="button"
-          tabIndex={0}
+          htmlFor="upload-file-input"
           aria-label="골프 스윙 영상 업로드 영역"
           className={`drop-zone select-none ${isDragging ? "drag-over" : ""}`}
+          style={{ cursor: "pointer" }}
           onDragOver={(e) => {
             e.preventDefault();
             setIsDragging(true);
@@ -146,13 +150,6 @@ export default function UploadPage() {
             const file = e.dataTransfer.files[0];
             if (file) handleFile(file);
           }}
-          onClick={() =>
-            document.getElementById("upload-file-input")?.click()
-          }
-          onKeyDown={(e) =>
-            e.key === "Enter" &&
-            document.getElementById("upload-file-input")?.click()
-          }
         >
           {/* Icon */}
           <div className="animate-float">
@@ -186,10 +183,10 @@ export default function UploadPage() {
           {/* Text */}
           <div className="text-center">
             <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
-              스윙 영상을 여기에 드래그하거나
+              탭해서 영상 선택하기
             </p>
             <p className="text-muted text-small mt-1">
-              클릭해서 파일을 선택하세요
+              PC 에서는 여기로 드래그해도 됩니다
             </p>
           </div>
 
@@ -200,45 +197,63 @@ export default function UploadPage() {
             <span className="text-muted text-xs">최대 100MB</span>
           </div>
 
+          {/* accept 는 video/* 로 넓게 둔다. mp4/quicktime 만 지정하면
+              안드로이드 파일 탐색기가 아무것도 보여주지 않는 일이 있다.
+              실제 형식 검사는 validateFile() 이 한다.
+
+              display:none 대신 화면 밖으로 밀어낸다. iOS 사파리는
+              display:none 인 input 을 다루지 못한다. */}
           <input
             id="upload-file-input"
             type="file"
-            accept="video/mp4,video/quicktime"
-            className="hidden"
+            accept="video/*"
+            style={{
+              position: "absolute",
+              width: 1,
+              height: 1,
+              opacity: 0,
+              pointerEvents: "none",
+            }}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFile(file);
             }}
-            aria-hidden="true"
           />
+        </label>
+      )}
 
-          {/* capture 속성이 있으면 폰에서 카메라가 바로 열린다.
-              PC 브라우저는 이 속성을 무시하고 파일 선택창을 띄우므로
-              양쪽에서 모두 안전하다. */}
+      {/* capture 속성이 있으면 폰에서 카메라가 바로 열린다.
+          PC 브라우저는 이 속성을 무시하고 파일 선택창을 띄운다. */}
+      {!isWorking && !uploadId && (
+        <label
+          htmlFor="upload-camera-input"
+          className="btn primary w-full mt-3"
+          style={{
+            padding: 14,
+            cursor: "pointer",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          📹 폰으로 바로 촬영하기
           <input
             id="upload-camera-input"
             type="file"
             accept="video/*"
             capture="environment"
-            className="hidden"
+            style={{
+              position: "absolute",
+              width: 1,
+              height: 1,
+              opacity: 0,
+              pointerEvents: "none",
+            }}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFile(file);
             }}
-            aria-hidden="true"
           />
-        </div>
-      )}
-
-      {/* 폰으로 바로 촬영하기 — 메신저를 거치지 않고 바로 올린다 */}
-      {!isWorking && !uploadId && (
-        <button
-          className="btn primary w-full mt-3"
-          style={{ padding: 14 }}
-          onClick={() => document.getElementById("upload-camera-input")?.click()}
-        >
-          📹 폰으로 바로 촬영하기
-        </button>
+        </label>
       )}
 
       {/* Working State */}

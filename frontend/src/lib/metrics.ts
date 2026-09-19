@@ -67,9 +67,32 @@ export interface SwingMeta {
   camera_angle?: string;
   swing_start_sec?: number;
   swing_end_sec?: number;
+  /** 단계별 시각(초). 카드를 누르면 영상의 이 지점으로 이동한다. */
+  phase_seconds?: Record<string, number>;
   measured_count?: number;
   total_count?: number;
 }
+
+/** 7단계 순서. 화면 표시와 영상 이동에 함께 쓴다. */
+export const PHASE_ORDER: string[] = [
+  "address",
+  "takeaway",
+  "top",
+  "downswing",
+  "impact",
+  "followthrough",
+  "finish",
+];
+
+export const PHASE_LABELS: Record<string, string> = {
+  address: "1.어드레스",
+  takeaway: "2.테이크백",
+  top: "3.탑",
+  downswing: "4.다운스윙",
+  impact: "5.임팩트",
+  followthrough: "6.팔로우스루",
+  finish: "7.피니시",
+};
 
 /** "_meta" 를 안전하게 꺼낸다. 없거나 모양이 다르면 빈 객체. */
 export function readMeta(metrics: Record<string, unknown> | undefined): SwingMeta {
@@ -78,10 +101,24 @@ export function readMeta(metrics: Record<string, unknown> | undefined): SwingMet
   const raw = meta as Record<string, unknown>;
   const num = (key: string): number | undefined =>
     typeof raw[key] === "number" ? (raw[key] as number) : undefined;
+
+  // phase_seconds 는 숫자 값만 걸러 담는다. 예전 분석 결과에는 없는 필드라
+  // 없거나 모양이 달라도 화면이 깨지면 안 된다.
+  const phaseSeconds: Record<string, number> = {};
+  const rawPhases = raw.phase_seconds;
+  if (typeof rawPhases === "object" && rawPhases !== null) {
+    for (const [key, value] of Object.entries(rawPhases)) {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        phaseSeconds[key] = value;
+      }
+    }
+  }
+
   return {
     camera_angle: typeof raw.camera_angle === "string" ? raw.camera_angle : undefined,
     swing_start_sec: num("swing_start_sec"),
     swing_end_sec: num("swing_end_sec"),
+    phase_seconds: Object.keys(phaseSeconds).length > 0 ? phaseSeconds : undefined,
     measured_count: num("measured_count"),
     total_count: num("total_count"),
   };

@@ -131,10 +131,17 @@ async def process_pose_estimation(upload_id: uuid.UUID) -> None:
             camera_angle = getattr(upload, "camera_angle", None) or "down_the_line"
             metrics = compute_metrics(seq, phases, camera_angle)
             metrics_payload = metrics_to_json(metrics)
+            # 단계별 시각(초). 화면에서 단계 카드를 누르면 영상의 그 지점으로
+            # 이동하고, 카드의 재생 버튼은 그 앞뒤를 느리게 반복 재생한다.
+            phase_seconds = {
+                name: round(float(seq.frame_indices[idx]) / seq.fps, 2)
+                for name, idx in phases.items()
+            }
             metrics_payload["_meta"] = {
                 "camera_angle": camera_angle,
                 "swing_start_sec": round(start_f / fps, 2),
                 "swing_end_sec": round(end_f / fps, 2),
+                "phase_seconds": phase_seconds,
                 **summarise_metrics(
                     {k: v for k, v in metrics_payload.items() if k != "_meta"}
                 ),
