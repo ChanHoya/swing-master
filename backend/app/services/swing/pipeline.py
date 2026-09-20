@@ -128,8 +128,11 @@ async def process_pose_estimation(upload_id: uuid.UUID) -> None:
                 None, extract_sequence, video_path, start_f, end_f
             )
             phases = detect_phases(seq)
-            # Plan 2에서 uploads.camera_angle 컬럼이 생기기 전까지는 기본값으로 처리한다.
-            camera_angle = getattr(upload, "camera_angle", None) or "down_the_line"
+            # 업로드할 때 사용자가 고른 각도를 그대로 쓴다. 이 값이 어떤 지표를
+            # 계산할 수 있는지를 결정한다(metrics.METRIC_ANGLES). 컬럼이 없던
+            # 시절에는 늘 down_the_line 이어서 정면 전용 지표가 영영 측정되지
+            # 않았다. 옛 레코드는 값이 없으므로 그때의 동작을 유지한다.
+            camera_angle = upload.camera_angle or "down_the_line"
             metrics = compute_metrics(seq, phases, camera_angle)
             metrics_payload = metrics_to_json(metrics)
             # 단계별 시각(초). 화면에서 단계 카드를 누르면 영상의 그 지점으로
@@ -140,6 +143,7 @@ async def process_pose_estimation(upload_id: uuid.UUID) -> None:
             }
             metrics_payload["_meta"] = {
                 "camera_angle": camera_angle,
+                "club": upload.club,
                 "swing_start_sec": round(start_f / fps, 2),
                 "swing_end_sec": round(end_f / fps, 2),
                 "phase_seconds": phase_seconds,

@@ -3,7 +3,7 @@ Upload endpoint — POST /upload
 """
 import uuid
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user_id
@@ -16,11 +16,37 @@ router = APIRouter()
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 ALLOWED_TYPES = ["video/mp4", "video/quicktime"]
 
+# 촬영 각도는 어떤 지표를 계산할 수 있는지를 결정한다(metrics.METRIC_ANGLES).
+# 아무 문자열이나 받으면 게이팅이 조용히 무너지므로 허용값만 통과시킨다.
+CAMERA_ANGLES = frozenset({"down_the_line", "face_on", "angled"})
+CLUBS = frozenset({"드라이버", "3W", "유틸", "5I", "7I", "9I", "PW", "SW"})
+
+
+def normalise_camera_angle(value: str | None) -> str:
+    """촬영 각도를 검증해 돌려준다. 모르면 추측하지 않고 거부한다."""
+    if value not in CAMERA_ANGLES:
+        raise HTTPException(
+            status_code=400,
+            detail="촬영 각도를 선택해 주세요. (후면/정면/45°)",
+        )
+    return value
+
+
+def normalise_club(value: str | None) -> str | None:
+    """클럽을 검증해 돌려준다. 지표에 영향을 주지 않으므로 없어도 된다."""
+    if not value:
+        return None
+    if value not in CLUBS:
+        raise HTTPException(status_code=400, detail="알 수 없는 클럽입니다.")
+    return value
+
 
 @router.post("")
 async def upload_video(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    camera_angle: str = Form(...),
+    club: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> dict:
@@ -30,6 +56,9 @@ async def upload_video(
     2. Cloudflare R2 스토리지에 업로드
     3. DB에 uploads, analyses 레코드 생성 (queued 상태)
     """
+    angle = normalise_camera_angle(camera_angle)
+    club_name = normalise_club(club)
+
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=400, 
@@ -75,7 +104,13 @@ async def upload_video(
     owner = uuid.UUID(user_id)
 
     # 1. Upload 레코드 추가
-    db_upload = Upload(storage_url=storage_url, file_size=file_size, user_id=owner)
+    db_upload = Upload(
+        storage_url=storage_url,
+        file_size=file_size,
+        user_id=owner,
+        camera_angle=angle,
+        club=club_name,
+    )
     db.add(db_upload)
     await db.flush()  # id를 받아오기 위해 먼저 플러시
 

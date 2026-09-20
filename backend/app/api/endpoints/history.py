@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user_id
 from app.core.database import get_db
-from app.models import Analysis
+from app.models import Analysis, Upload
 
 router = APIRouter()
 
@@ -25,17 +25,19 @@ async def get_history(
     import uuid as uuid_mod
     uid = uuid_mod.UUID(user_id)
 
+    # 촬영 각도와 클럽은 uploads 에 있다. 목록에서 기록을 구분해 보려면
+    # 함께 가져와야 하므로 조인한다.
     stmt = (
-        select(Analysis)
+        select(Analysis, Upload)
+        .join(Upload, Upload.id == Analysis.upload_id)
         .where(Analysis.user_id == uid)
         .order_by(Analysis.created_at.desc())
         .limit(20)
     )
-    result = await db.execute(stmt)
-    analyses = result.scalars().all()
+    rows = list((await db.execute(stmt)).all())
 
     items = []
-    for a in analyses:
+    for a, upload in rows:
         thumbnail = None
         if a.overlay_urls and isinstance(a.overlay_urls, dict):
             thumbnail = a.overlay_urls.get("impact") or a.overlay_urls.get("address")
@@ -47,6 +49,9 @@ async def get_history(
             "overall_score": a.overall_score,
             "grade": a.grade,
             "thumbnail": thumbnail,
+            # 옛 기록에는 없다. 지어내지 않고 null 로 둔다.
+            "camera_angle": upload.camera_angle,
+            "club": upload.club,
             "completed_at": a.completed_at.isoformat() if a.completed_at else None,
         })
 

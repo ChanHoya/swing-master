@@ -49,6 +49,11 @@ class Upload(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     storage_url: Mapped[str] = mapped_column(Text, nullable=False)
+    # 촬영 각도는 어떤 지표를 계산할 수 있는지를 결정한다(metrics.METRIC_ANGLES).
+    # 추측하지 않고 업로드할 때 사용자가 고른 값을 쓴다.
+    camera_angle: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # 클럽은 지표에 영향을 주지 않는다. 기록을 구분해 보기 위한 정보다.
+    club: Mapped[str | None] = mapped_column(String(20), nullable=True)
     file_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

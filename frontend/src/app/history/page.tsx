@@ -4,8 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/api";
+import { cameraAngleLabel } from "@/lib/metrics";
 
 interface HistoryItem {
+  /** 옛 기록에는 없다. 지어내지 않고 null 로 온다. */
+  camera_angle?: string | null;
+  club?: string | null;
   analysis_id: string;
   upload_id: string;
   status: string;
@@ -170,6 +174,21 @@ export default function HistoryPage() {
               {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>스윙 분석</div>
+                {/* 클럽·촬영 각도. 옛 기록에는 없으므로 있을 때만 보여준다. */}
+                {(item.club || item.camera_angle) && (
+                  <div className="flex gap-1 mt-1" style={{ flexWrap: "wrap" }}>
+                    {item.club && (
+                      <span className="chip" style={{ fontSize: 10, padding: "2px 8px" }}>
+                        {item.club}
+                      </span>
+                    )}
+                    {item.camera_angle && (
+                      <span className="chip blue" style={{ fontSize: 10, padding: "2px 8px" }}>
+                        {cameraAngleLabel(item.camera_angle)}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="text-muted text-xs mt-1">
                   {item.completed_at
                     ? new Date(item.completed_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })

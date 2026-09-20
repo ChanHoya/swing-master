@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
+import { CAMERA_ANGLES, CLUBS, type CameraAngle } from "@/lib/metrics";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 
@@ -12,6 +13,9 @@ export default function UploadPage() {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // 촬영 각도는 어떤 지표를 계산할 수 있는지를 결정하므로 반드시 보낸다.
+  const [cameraAngle, setCameraAngle] = useState<CameraAngle>("down_the_line");
+  const [club, setClub] = useState<string>("드라이버");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +25,8 @@ export default function UploadPage() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("camera_angle", cameraAngle);
+      formData.append("club", club);
 
       const response = await apiClient.post("/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -435,32 +441,45 @@ export default function UploadPage() {
           <div className="card">
             <div className="card-sub mb-2">1. 클럽 선택</div>
             <div className="flex gap-2" style={{ flexWrap: "wrap" }}>
-              {["드라이버", "3W", "유틸", "5I", "7I", "9I", "PW", "SW"].map(
-                (c, i) => (
-                  <span
-                    key={c}
-                    className={`chip ${i === 0 ? "accent" : ""}`}
-                    style={{ cursor: "pointer", fontSize: 11 }}
-                  >
-                    {c}
-                  </span>
-                )
-              )}
+              {CLUBS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setClub(c)}
+                  className={`chip ${club === c ? "accent" : ""}`}
+                  style={{ cursor: "pointer", fontSize: 11, border: "none" }}
+                  aria-pressed={club === c}
+                >
+                  {c}
+                </button>
+              ))}
             </div>
           </div>
           <div className="card">
             <div className="card-sub mb-2">2. 촬영 각도</div>
-            <div className="flex gap-2">
-              <span className="chip blue" style={{ cursor: "pointer" }}>
-                정면 (DTL)
-              </span>
-              <span className="chip" style={{ cursor: "pointer" }}>
-                측면 (FO)
-              </span>
-              <span className="chip" style={{ cursor: "pointer" }}>
-                45°
-              </span>
+            <div className="flex gap-2" style={{ flexWrap: "wrap" }}>
+              {CAMERA_ANGLES.map((a) => (
+                <button
+                  key={a.value}
+                  type="button"
+                  onClick={() => setCameraAngle(a.value)}
+                  className={`chip ${cameraAngle === a.value ? "blue" : ""}`}
+                  style={{ cursor: "pointer", border: "none" }}
+                  aria-pressed={cameraAngle === a.value}
+                  title={a.hint}
+                >
+                  {a.label}
+                </button>
+              ))}
             </div>
+            <p className="text-muted text-xs mt-2" style={{ lineHeight: 1.5 }}>
+              {cameraAngle === "down_the_line" &&
+                "타겟 라인 뒤에서 촬영 — 어깨·힙 회전과 X-팩터를 측정합니다."}
+              {cameraAngle === "face_on" &&
+                "골퍼를 마주 보고 촬영 — 헤드 무브먼트와 체중 이동을 측정합니다."}
+              {cameraAngle === "angled" &&
+                "비스듬히 촬영 — 척추 각도·무릎 굴곡·템포만 측정할 수 있습니다."}
+            </p>
           </div>
         </div>
       )}

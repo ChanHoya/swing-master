@@ -179,3 +179,44 @@ def test_limits_cover_all_eight_metrics():
     assert set(METRIC_LIMITS) == ALL_METRICS
     for name, (low, high) in METRIC_LIMITS.items():
         assert low < high, name
+
+
+# ── 45도 촬영 ──────────────────────────────────────────────────────────────
+#
+# 비스듬히 찍으면 회전도 좌우이동도 믿을 수 없다. 회전은 깊이(z)가 필요해
+# 후면에서만, 좌우이동은 화면에 드러나야 하므로 정면에서만 성립한다.
+# 45도는 둘 다 아니므로, 각도와 무관한 지표 3개만 계산하고 나머지는
+# "이 각도에서는 측정 불가"로 정직하게 내보낸다.
+_ANGLE_FREE = ("spine_angle", "knee_flex", "tempo_ratio")
+_ANGLE_BOUND = (
+    "shoulder_rotation", "hip_rotation", "x_factor",
+    "head_movement", "weight_shift",
+)
+
+
+def test_angled_allows_only_angle_free_metrics():
+    for name in _ANGLE_FREE:
+        assert "angled" in METRIC_ANGLES[name]
+    for name in _ANGLE_BOUND:
+        assert "angled" not in METRIC_ANGLES[name]
+
+
+def test_angled_marks_rotation_and_lateral_unmeasurable():
+    seq = _realistic_sequence()
+    result = compute_metrics(seq, PHASES, "angled")
+    for name in _ANGLE_BOUND:
+        assert result[name].measurable is False, name
+        assert result[name].value is None, name
+
+
+def test_angled_still_measures_posture_and_tempo():
+    seq = _realistic_sequence()
+    result = compute_metrics(seq, PHASES, "angled")
+    for name in ("spine_angle", "knee_flex"):
+        assert result[name].measurable is True, name
+        assert result[name].value is not None, name
+
+
+def test_compute_returns_all_eight_metrics_for_angled():
+    seq = _realistic_sequence()
+    assert set(compute_metrics(seq, PHASES, "angled")) == ALL_METRICS

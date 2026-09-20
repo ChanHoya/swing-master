@@ -218,16 +218,20 @@ def tempo_ratio(
 
 
 # ── 촬영 각도별 계산 가능 지표 ─────────────────────────────────────────────
-CameraAngle = Literal["down_the_line", "face_on"]
+CameraAngle = Literal["down_the_line", "face_on", "angled"]
 
-_BOTH = frozenset({"down_the_line", "face_on"})
+# 비스듬히(45도) 찍으면 회전도 좌우이동도 믿을 수 없다. 회전은 깊이(z) 성분이
+# 필요해 후면에서만, 좌우이동은 화면에 드러나야 하므로 정면에서만 성립한다.
+# 45도는 둘 다 아니므로 각도와 무관한 지표만 남긴다 — 애매한 각도에서 억지로
+# 숫자를 내는 것보다 "측정 불가"가 정직하다.
+_ALL = frozenset({"down_the_line", "face_on", "angled"})
 _DTL = frozenset({"down_the_line"})
 _FACE = frozenset({"face_on"})
 
 METRIC_ANGLES: dict[str, frozenset[str]] = {
-    "spine_angle": _BOTH,
-    "knee_flex": _BOTH,
-    "tempo_ratio": _BOTH,
+    "spine_angle": _ALL,
+    "knee_flex": _ALL,
+    "tempo_ratio": _ALL,
     # 수평 회전은 깊이(z) 성분이 필요해 정면에서는 신뢰할 수 없다
     "shoulder_rotation": _DTL,
     "hip_rotation": _DTL,

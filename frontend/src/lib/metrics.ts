@@ -179,3 +179,28 @@ export function metricFillRatio(key: string, value: number): number {
   const deviation = Math.abs(value - meta.ideal) / meta.tolerance;
   return Math.max(0.08, Math.min(1, 1 - deviation));
 }
+
+
+/**
+ * 촬영 각도. 백엔드 metrics.METRIC_ANGLES 의 키와 같아야 한다.
+ *
+ * 골프 용어를 그대로 쓴다 — DTL(down the line)은 타겟 라인 뒤에서 찍는 후면,
+ * FO(face-on)가 골퍼를 마주 보는 정면이다. 화면 라벨이 이 둘을 뒤바꿔 놓으면
+ * 사용자가 각도를 반대로 고르게 되고, 지표 게이팅이 통째로 틀어진다.
+ */
+export const CAMERA_ANGLES = [
+  { value: "down_the_line", label: "후면 (DTL)", hint: "타겟 라인 뒤에서" },
+  { value: "face_on", label: "정면 (FO)", hint: "골퍼를 마주 보고" },
+  { value: "angled", label: "45°", hint: "비스듬히" },
+] as const;
+
+export type CameraAngle = (typeof CAMERA_ANGLES)[number]["value"];
+
+/** 백엔드 upload.CLUBS 와 같아야 한다. */
+export const CLUBS = ["드라이버", "3W", "유틸", "5I", "7I", "9I", "PW", "SW"] as const;
+
+/** 각도 코드를 화면 문자열로. 모르는 값이면 그대로 돌려준다. */
+export function cameraAngleLabel(value: string | null | undefined): string {
+  if (!value) return "—";
+  return CAMERA_ANGLES.find((a) => a.value === value)?.label ?? value;
+}
