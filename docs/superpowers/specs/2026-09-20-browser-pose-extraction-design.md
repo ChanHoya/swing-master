@@ -206,6 +206,10 @@ def sequence_from_payload(payload) -> PoseSequence
 
 ## 범위 밖
 
+- **클럽 궤적.** 손 궤적보다 의미 있다는 요청이 있었으나, MediaPipe 는 클럽을
+  내지 않고 영상 검출은 세 번 시도해 세 번 실패했다. 별도 프로젝트로 미룬다 —
+  조사 기록은 `docs/superpowers/plans/2026-09-20-club-tracking-findings.md`.
+  브라우저 전환 후 원본 해상도와 시간차 단서를 쓸 수 있을 때 재개한다.
 - PWA
 - 서버 포즈 폴백 (사용자가 두지 않기로 결정)
 - 지표 알고리즘 변경 — 좌표의 출처만 바뀌고 계산은 그대로다
