@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MediaPipe WASM — 빌드 시 node_modules 에서 복사한다 (scripts/copy-mediapipe.mjs)
+public/mp-wasm/
