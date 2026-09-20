@@ -14,7 +14,35 @@ from app.models import Upload, Analysis
 router = APIRouter()
 
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-ALLOWED_TYPES = ["video/mp4", "video/quicktime"]
+# 브라우저에서 640px 로 줄여 보내면 MediaRecorder 가 만든 형식이 온다.
+# Chrome 은 webm(VP8/VP9), Safari 는 mp4(H.264) 다. OpenCV 가 둘 다 읽는 것을
+# 확인했다(VP9 webm 90프레임/30fps 정상 디코딩).
+ALLOWED_TYPES = frozenset({"video/mp4", "video/quicktime", "video/webm"})
+
+
+def normalise_content_type(raw: str | None) -> str:
+    """content-type 에서 코덱 꼬리표를 떼고 검증한다.
+
+    MediaRecorder 는 "video/webm;codecs=vp9" 처럼 코덱을 붙여 보낸다.
+    정확히 일치만 보면 이런 값이 전부 거부되어, 줄여 보내는 최적화가 막힌다.
+    """
+    base = (raw or "").split(";")[0].strip().lower()
+    if base not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="지원되지 않는 파일 형식입니다. (MP4, MOV, WebM만 가능)",
+        )
+    return base
+
+
+# content-type 별 저장 확장자. 파일 이름을 믿지 않는 이유는, 브라우저에서
+# 640px 로 줄여 보내면 내용은 webm 인데 이름은 원본 그대로 "swing.mp4" 로
+# 오기 때문이다. 내용을 말해 주는 것은 content-type 이다.
+_EXTENSIONS = {"video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm"}
+
+
+def extension_for(content_type: str) -> str:
+    return _EXTENSIONS.get(content_type, "mp4")
 
 # 촬영 각도는 어떤 지표를 계산할 수 있는지를 결정한다(metrics.METRIC_ANGLES).
 # 아무 문자열이나 받으면 게이팅이 조용히 무너지므로 허용값만 통과시킨다.
@@ -59,11 +87,7 @@ async def upload_video(
     angle = normalise_camera_angle(camera_angle)
     club_name = normalise_club(club)
 
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=400, 
-            detail="지원되지 않는 파일 형식입니다. (MP4, MOV만 가능)"
-        )
+    content_type = normalise_content_type(file.content_type)
 
     # 파이썬에서 파일 크기를 확인하기 위해 커서를 맨 끝으로 보냄
     file.file.seek(0, 2)
@@ -77,11 +101,7 @@ async def upload_video(
         )
 
     # R2 스토리지용 고유 키 생성
-    ext = file.filename.split(".")[-1].lower() if "." in (file.filename or "") else "mp4"
-    if ext == "blob":  # FormData에서 filename 지정 안 될 경우 빈번함
-        ext = "mp4"
-        
-    file_key = f"uploads/{uuid.uuid4().hex}.{ext}"
+    file_key = f"uploads/{uuid.uuid4().hex}.{extension_for(content_type)}"
 
     # boto3는 동기 라이브러리이므로 비동기 로직인 FastAPI를 블로킹하지 않도록 executor에서 실행
     loop = asyncio.get_running_loop()
@@ -91,7 +111,7 @@ async def upload_video(
             upload_fileobj,
             file.file,
             file_key,
-            file.content_type
+            content_type
         )
     except Exception as e:
         raise HTTPException(

@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
 import { CAMERA_ANGLES, CLUBS, type CameraAngle } from "@/lib/metrics";
+import { downscaleVideo } from "@/lib/downscale";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 
@@ -16,6 +17,8 @@ export default function UploadPage() {
   // 촬영 각도는 어떤 지표를 계산할 수 있는지를 결정하므로 반드시 보낸다.
   const [cameraAngle, setCameraAngle] = useState<CameraAngle>("down_the_line");
   const [club, setClub] = useState<string>("드라이버");
+  // 업로드 전 640px 변환 진행률. null 이면 변환 중이 아니다.
+  const [prepProgress, setPrepProgress] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +26,14 @@ export default function UploadPage() {
   // 1. 영상 파일 업로드 Mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      // 서버는 어차피 640px 로 줄여 추론한다. 미리 줄여 보내면 업로드와
+      // 서버 디코딩 비용이 함께 줄고 결과는 같다. 실패하면 원본을 쓴다.
+      setPrepProgress(0);
+      const prepared = await downscaleVideo(file, setPrepProgress);
+      setPrepProgress(null);
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", prepared.blob, file.name);
       formData.append("camera_angle", cameraAngle);
       formData.append("club", club);
 
@@ -109,7 +118,9 @@ export default function UploadPage() {
       statusData?.status !== "failed");
 
   let statusMessage = "대기 중";
-  if (uploadMutation.isPending)
+  if (prepProgress !== null)
+    statusMessage = `영상 준비 중... (${Math.round(prepProgress * 100)}%)`;
+  else if (uploadMutation.isPending)
     statusMessage = `서버로 비디오 업로드 중... (${uploadProgress}%)`;
   else if (statusData?.status === "queued")
     statusMessage = "AI 분석 대기열에 등록되었습니다...";
