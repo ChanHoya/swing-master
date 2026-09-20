@@ -181,3 +181,109 @@ def test_NaN_좌표는_버린다():
 
     assert hands
     assert all(np.isfinite(p[1]) and np.isfinite(p[2]) for p in hands)
+
+
+# ── 빠른 원호 구간의 보간 ──────────────────────────────────────────────────
+#
+# 임팩트 부근은 모션 블러로 손목 랜드마크가 무너져 프레임이 버려진다. 그
+# 판단 자체는 옳지만, 버린 자리를 직선으로 이으면 원호의 현을 가로질러
+# 안쪽으로 파고든다. 스윙에서 가장 빠르고 가장 많이 휘는 구간이라 이탈이
+# 크고, 원호 안쪽에는 팔꿈치가 있어 "궤적이 팔꿈치로 올라간다"로 보인다.
+#
+# 실측: 채택된 프레임 위의 점은 손목에서 평균 4px, 보간으로 만든 점은 12.5px.
+import math as _math
+
+import numpy as _np
+
+from app.services.swing.tracks import resample_path
+
+
+def _arc(n: int, start: float = _math.pi, end: float = 0.0):
+    """반지름 1, 중심 원점인 반원 위의 점 n개와 그 시각."""
+    angles = _np.linspace(start, end, n)
+    times = _np.linspace(0.0, 1.0, n)
+    return list(times), [(float(_math.cos(a)), float(_math.sin(a))) for a in angles]
+
+
+def _max_radius_error(points) -> float:
+    """원호에서 얼마나 벗어났는가. 현을 가로지르면 반지름이 1보다 작아진다."""
+    return max(abs(_math.hypot(x, y) - 1.0) for _, x, y in points)
+
+
+def test_interpolation_follows_the_arc_across_a_gap():
+    """구멍이 뚫린 원호를 이을 때 현을 가로지르면 안 된다."""
+    times, pts = _arc(13)
+    # 한가운데 세 점을 지운다 — 임팩트 부근에서 프레임이 버려지는 상황.
+    keep = [i for i in range(13) if i not in (5, 6, 7)]
+    gapped_t = [times[i] for i in keep]
+    gapped_p = [pts[i] for i in keep]
+
+    filled = resample_path(gapped_t, gapped_p, hz=60.0)
+
+    # 같은 구멍을 직선으로 이었을 때와 견준다. 절대값을 못박으면 기준이
+    # 임의가 되므로, 실제로 고친 성질 — 현이 아니라 호를 따르는가 — 을 본다.
+    grid = _np.arange(gapped_t[0], gapped_t[-1], 1.0 / 60.0)
+    arr = _np.asarray(gapped_p)
+    linear = [
+        (0.0, float(x), float(y))
+        for x, y in zip(
+            _np.interp(grid, gapped_t, arr[:, 0]),
+            _np.interp(grid, gapped_t, arr[:, 1]),
+        )
+    ]
+    assert _max_radius_error(filled) < _max_radius_error(linear) * 0.7
+
+
+def test_interpolation_is_exact_when_nothing_is_missing():
+    """구멍이 없으면 원래 점을 충실히 따라야 한다."""
+    times, pts = _arc(25)
+    filled = resample_path(times, pts, hz=60.0)
+    assert _max_radius_error(filled) < 0.02
+
+
+def test_interpolation_does_not_overshoot_a_straight_line():
+    """곡선 보간이 직선 구간에서 출렁이면 안 된다."""
+    times = [i / 10.0 for i in range(11)]
+    pts = [(t, 0.0) for t in times]
+    filled = resample_path(times, pts, hz=60.0)
+    assert max(abs(y) for _, _, y in filled) < 1e-6
+
+
+def test_two_points_still_produce_a_path():
+    """점이 둘뿐이면 직선 말고는 그릴 것이 없다. 죽지는 말아야 한다."""
+    assert len(resample_path([0.0, 0.5], [(0.0, 0.0), (1.0, 1.0)], hz=30.0)) >= 2
+
+
+# ── 손목 붕괴와 단축(foreshortening) 구분 ─────────────────────────────────
+#
+# 팔뚝의 절대 픽셀 길이로는 둘을 못 가른다. 팔이 카메라 쪽을 향하면 팔뚝이
+# 짧게 보이지만 손목은 제자리에 있고, 손목이 팔꿈치로 미끄러지면 역시 짧게
+# 보인다. 실측에서 이 혼동으로 멀쩡한 프레임이 버려졌고(비율 0.64인데 절대
+# 길이가 임계값에 1px 모자람), 그 구멍을 보간이 메우며 궤적이 원호 안쪽으로
+# 파고들었다.
+#
+# 위팔(어깨→팔꿈치)은 함께 단축되므로 비율은 유지된다. 실측 팔뚝/위팔
+# 중앙값은 어깨폭 59px 영상에서 0.92, 17px 영상에서 0.88 이었다.
+from app.services.swing.tracks import forearm_is_collapsed
+
+
+def test_collapsed_wrist_is_rejected():
+    """손목이 팔꿈치에 붙으면 팔뚝만 짧아지고 위팔은 그대로다."""
+    assert forearm_is_collapsed(forearm=3.0, upper_arm=45.0) is True
+    assert forearm_is_collapsed(forearm=18.0, upper_arm=42.0) is True
+
+
+def test_foreshortened_arm_is_kept():
+    """팔 전체가 카메라를 향하면 둘 다 짧아진다. 손목은 멀쩡하다."""
+    assert forearm_is_collapsed(forearm=16.0, upper_arm=18.0) is False
+    assert forearm_is_collapsed(forearm=25.0, upper_arm=39.0) is False
+
+
+def test_normal_arm_is_kept():
+    assert forearm_is_collapsed(forearm=42.0, upper_arm=46.0) is False
+
+
+def test_unusable_measurements_are_not_treated_as_collapse():
+    """위팔을 못 재면 판단 근거가 없다. 멀쩡한 프레임을 버리지 않는다."""
+    assert forearm_is_collapsed(forearm=40.0, upper_arm=0.0) is False
+    assert forearm_is_collapsed(forearm=float("nan"), upper_arm=45.0) is False
